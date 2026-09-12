@@ -545,21 +545,28 @@ button:not(:disabled) {
   left: -74px;
   z-index: 20;
   width: 190px;
-  height: 94px;
+  height: 95px;
   color: #3e403c;
   animation: topbar-avatar-guide-in 380ms cubic-bezier(.34, 1.2, .64, 1) both;
 }
-.topbar-avatar-guide__bubble { position: absolute; inset: 0; width: 190px; height: 94px; pointer-events: none; user-select: none; }
-.topbar-avatar-guide__text { position: absolute; top: 27px; left: 22px; z-index: 1; width: 137px; font-size: 14px; line-height: 19.6px; }
-.topbar-avatar-guide__close { position: absolute; top: 0; left: 166px; z-index: 2; display: flex; width: 24px; height: 24px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 50%; background: linear-gradient(118.8deg, #b8ed6e -1.8%, #f5eb66 62.83%, #ffcbe9 109.74%); box-shadow: inset 0 2px 12px rgba(255, 255, 255, .62), 0 2px 8px rgba(184, 237, 110, .28); }
-.topbar-avatar-guide__close span,
-.topbar-avatar-guide__close span::after { position: absolute; width: 12px; height: 2px; border-radius: 99px; background: #3e403c; content: ""; }
-.topbar-avatar-guide__close span { transform: rotate(45deg); }
-.topbar-avatar-guide__close span::after { transform: rotate(90deg); }
+.topbar-avatar-guide__bubble { position: absolute; inset: 0; display: block; width: 190px; height: 95px; pointer-events: none; user-select: none; }
+.topbar-avatar-guide__close { position: absolute; top: 0; left: 166px; z-index: 2; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: transparent; box-shadow: none; cursor: pointer; }
 @keyframes topbar-avatar-guide-in { from { opacity: 0; transform: translateY(6px) scale(.93); } to { opacity: 1; transform: none; } }
 
 @media (max-width: 1535px) { .topbar-avatar-guide { left: -104px; } }
 @media (max-width: 1279px) { .topbar-avatar-guide { left: -128px; } }
+
+@media (max-width: 767px) {
+  .topbar-avatar-guide {
+    top: 54px;
+    left: -128px;
+    transform-origin: 158px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-avatar-guide { animation: none; }
+}
 
 @media (max-width: 640px) {
   .avatar-mailbox-popover {
