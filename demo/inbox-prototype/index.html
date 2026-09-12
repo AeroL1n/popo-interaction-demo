@@ -1,0 +1,2092 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>popo 泡泡动态</title>
+    <script src="./tailwind.js"></script>
+    <script src="./tw-config.js"></script>
+    <link rel="stylesheet" href="./tokens.css" />
+    <style>
+      :root {
+        --pop-ink: #0a0f02;
+        --pop-moss: #629915;
+        --pop-lime: #b8ed6e;
+        --pop-mint: #7cf0af;
+        --pop-paper: #f7f8f6;
+        --pop-line: rgba(10, 15, 2, 0.09);
+      }
+
+      /* 顶栏头像入口：沿用 POPO 的彩色光环语言，增加未读消息小泡。 */
+      .mail-avatar-trigger {
+        position: relative;
+        display: grid;
+        height: 54px;
+        width: 54px;
+        place-items: center;
+        border-radius: 9999px;
+        transition: transform 220ms cubic-bezier(.16, 1, .3, 1);
+      }
+      .mail-avatar-trigger::before {
+        content: '';
+        position: absolute;
+        inset: 3px;
+        border-radius: inherit;
+        background: conic-gradient(from 15deg, #7cf0af, #fff0a7 28%, #ffcbe9 54%, #77e5ff 76%, #7cf0af);
+        animation: avatar-orbit 7s linear infinite;
+      }
+      .mail-avatar-trigger::after {
+        content: '';
+        position: absolute;
+        inset: 6px;
+        border-radius: inherit;
+        background: white;
+      }
+      .mail-avatar-core {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        height: 42px;
+        width: 42px;
+        place-items: center;
+        border-radius: 9999px;
+        background: #b3ed6d;
+        color: #0a0f02;
+        font-size: 19px;
+        font-weight: 650;
+        box-shadow: 0 2px 10px rgba(50, 82, 5, .16);
+      }
+      .mail-avatar-trigger:hover,
+      .mailbox-root.is-open .mail-avatar-trigger { transform: scale(1.045) }
+      .mail-unread {
+        position: absolute;
+        right: -1px;
+        top: -1px;
+        z-index: 5;
+        display: grid;
+        min-width: 19px;
+        height: 19px;
+        place-items: center;
+        border: 2px solid white;
+        border-radius: 9999px;
+        background: #f5a623;
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 3px 8px rgba(196, 118, 10, .26);
+      }
+      .mail-unread.is-zero { opacity: 0; transform: scale(.4) }
+      .mail-avatar-bubble {
+        position: absolute;
+        right: 1px;
+        top: -10px;
+        z-index: 4;
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+        transform: rotate(8deg);
+        filter: drop-shadow(0 3px 4px rgba(50, 82, 5, .18));
+        animation: avatar-bob 2.8s ease-in-out infinite;
+      }
+      @keyframes avatar-orbit { to { transform: rotate(1turn) } }
+      @keyframes avatar-bob { 0%, 100% { transform: translateY(0) rotate(8deg) } 50% { transform: translateY(-3px) rotate(14deg) } }
+
+      /* Hover 安全区：头像与浮层之间留一段透明桥，鼠标经过不会闪退。 */
+      .mailbox-bridge {
+        position: absolute;
+        right: -10px;
+        top: 43px;
+        width: 590px;
+        height: 30px;
+        pointer-events: none;
+      }
+      .mailbox-root.is-open .mailbox-bridge { pointer-events: auto }
+      .mailbox-shell {
+        position: absolute;
+        right: -10px;
+        top: 60px;
+        width: min(552px, calc(100vw - 28px));
+        height: min(720px, calc(100vh - 94px));
+        z-index: 80;
+        visibility: hidden;
+        opacity: 0;
+        transform: translateY(-8px) scale(.975);
+        transform-origin: 92% 0;
+        pointer-events: none;
+        transition: opacity 190ms ease, transform 240ms cubic-bezier(.16, 1, .3, 1), visibility 190ms;
+      }
+      .mailbox-root.is-open .mailbox-shell {
+        visibility: visible;
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+      }
+      /* ===== 浮层氛围层：四团极光各自漂移，做出会流动的空气感（纯 CSS 渐变，无任何贴图） ===== */
+      .mailbox-aura {
+        position: absolute;
+        inset: -34px -34px -40px;
+        z-index: -2;
+        pointer-events: none;
+      }
+      .aura-blob {
+        position: absolute;
+        border-radius: 50%;
+        will-change: transform;
+        transform: translateZ(0);
+      }
+      .aura-blob.b-lime {
+        left: 4%; top: -7%; width: 64%; height: 54%;
+        background: radial-gradient(circle, rgba(184, 237, 110, .92), rgba(184, 237, 110, 0) 68%);
+        filter: blur(32px);
+        animation: aura-drift-a 15s ease-in-out infinite alternate;
+      }
+      .aura-blob.b-mint {
+        right: -6%; top: 6%; width: 56%; height: 50%;
+        background: radial-gradient(circle, rgba(124, 240, 175, .86), rgba(124, 240, 175, 0) 70%);
+        filter: blur(36px);
+        animation: aura-drift-b 19s ease-in-out infinite alternate;
+      }
+      .aura-blob.b-pink {
+        left: 10%; bottom: -9%; width: 60%; height: 48%;
+        background: radial-gradient(circle, rgba(255, 203, 233, .82), rgba(255, 203, 233, 0) 70%);
+        filter: blur(38px);
+        animation: aura-drift-c 17s ease-in-out infinite alternate;
+      }
+      .aura-blob.b-sky {
+        right: 4%; bottom: -6%; width: 52%; height: 46%;
+        background: radial-gradient(circle, rgba(119, 229, 255, .76), rgba(119, 229, 255, 0) 72%);
+        filter: blur(40px);
+        animation: aura-drift-d 22s ease-in-out infinite alternate;
+      }
+      .aura-blob.b-sun {
+        left: 32%; top: 26%; width: 44%; height: 40%;
+        background: radial-gradient(circle, rgba(245, 235, 102, .6), rgba(245, 235, 102, 0) 72%);
+        filter: blur(44px);
+        animation: aura-drift-b 26s ease-in-out infinite alternate-reverse;
+      }
+      @keyframes aura-drift-a { from { transform: translate3d(-16px, -10px, 0) scale(1) } to { transform: translate3d(18px, 14px, 0) scale(1.14) } }
+      @keyframes aura-drift-b { from { transform: translate3d(14px, 12px, 0) scale(1.1) } to { transform: translate3d(-18px, -12px, 0) scale(.92) } }
+      @keyframes aura-drift-c { from { transform: translate3d(-12px, 14px, 0) scale(.95) } to { transform: translate3d(20px, -10px, 0) scale(1.16) } }
+      @keyframes aura-drift-d { from { transform: translate3d(16px, -12px, 0) scale(1.08) } to { transform: translate3d(-14px, 10px, 0) scale(.94) } }
+
+      /* ===== 云朵层：SVG goo 融合的云瓣，只在面板上下边缘轻轻托一下 =====
+         矢量渲染，任意分辨率下都是锐利的，不会有贴图的糊边。 */
+      .mailbox-cloud {
+        position: absolute;
+        inset: -30px -28px -36px;
+        z-index: -1;
+        width: calc(100% + 56px);
+        height: calc(100% + 66px);
+        pointer-events: none;
+        overflow: visible;
+        filter: drop-shadow(0 10px 20px rgba(48, 78, 26, .1));
+        animation: cloud-breathe 12s ease-in-out infinite alternate;
+      }
+      @keyframes cloud-breathe {
+        from { transform: translate3d(0, 0, 0) scale(1) }
+        to { transform: translate3d(0, -5px, 0) scale(1.012) }
+      }
+      .mailbox-card {
+        position: relative;
+        display: flex;
+        height: 100%;
+        min-height: 0;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, .82);
+        border-radius: 30px;
+        background: rgba(255, 255, 255, .88);
+        box-shadow: 0 26px 80px rgba(39, 66, 16, .18), 0 10px 26px rgba(39, 66, 16, .11), inset 0 1px 0 rgba(255, 255, 255, .86);
+        backdrop-filter: blur(24px) saturate(1.12);
+      }
+      .mailbox-card::before {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto;
+        height: 110px;
+        pointer-events: none;
+        background: linear-gradient(135deg, rgba(218, 252, 169, .68), rgba(124, 240, 175, .18) 52%, rgba(255, 203, 233, .18));
+      }
+      .mailbox-nib {
+        position: absolute;
+        right: 29px;
+        top: -7px;
+        z-index: 4;
+        width: 18px;
+        height: 18px;
+        border-left: 1px solid rgba(255, 255, 255, .85);
+        border-top: 1px solid rgba(255, 255, 255, .85);
+        background: rgba(224, 251, 188, .92);
+        transform: rotate(45deg);
+      }
+      .mailbox-head { position: relative; z-index: 2; padding: 22px 22px 14px }
+      .mailbox-brandmark {
+        display: grid;
+        height: 38px;
+        width: 38px;
+        place-items: center;
+        border-radius: 15px 15px 15px 6px;
+        background: #0a0f02;
+        box-shadow: 0 8px 18px rgba(10, 15, 2, .15);
+      }
+      .mailbox-brandmark img { width: 24px; height: 24px; object-fit: contain }
+      .mailbox-mode {
+        display: flex;
+        gap: 4px;
+        margin-top: 16px;
+        padding: 4px;
+        border: 1px solid rgba(255, 255, 255, .72);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, .52);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .72);
+      }
+      .mailbox-mode button {
+        position: relative;
+        flex: 1;
+        height: 36px;
+        border-radius: 12px;
+        color: #656664;
+        font-size: 13px;
+        font-weight: 560;
+        transition: all 180ms ease;
+      }
+      .mailbox-mode button.is-active {
+        background: #0a0f02;
+        color: white;
+        box-shadow: 0 7px 16px rgba(10, 15, 2, .14);
+      }
+      .mailbox-mode .tab-new {
+        display: inline-grid;
+        min-width: 17px;
+        height: 17px;
+        margin-left: 5px;
+        place-items: center;
+        border-radius: 9999px;
+        background: #b8ed6e;
+        color: #0a0f02;
+        font-size: 10px;
+      }
+      .mailbox-view { display: none; min-height: 0; flex: 1 }
+      .mailbox-view.is-active { display: flex; flex-direction: column }
+      .mailbox-filters {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        gap: 7px;
+        padding: 1px 22px 14px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .mailbox-filters::-webkit-scrollbar { display: none }
+      .mail-filter {
+        flex: none;
+        height: 29px;
+        padding: 0 12px;
+        border: 1px solid rgba(10, 15, 2, .08);
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, .68);
+        color: #656664;
+        font-size: 12px;
+        transition: all 160ms ease;
+      }
+      .mail-filter.is-active { border-color: #0a0f02; background: #0a0f02; color: white }
+      .mail-filter b { color: #d18b12; font-weight: 650 }
+      .mail-filter.is-active b { color: #b8ed6e }
+      .mail-list {
+        min-height: 0;
+        flex: 1;
+        overflow-y: auto;
+        padding: 0 14px 14px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(10, 15, 2, .15) transparent;
+      }
+      .mail-day {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 8px 7px;
+        color: #90918e;
+        font-size: 11px;
+        letter-spacing: .08em;
+      }
+      .mail-day::after { content: ''; height: 1px; flex: 1; background: rgba(10, 15, 2, .08) }
+      .mail-item {
+        position: relative;
+        display: flex;
+        gap: 12px;
+        margin-bottom: 8px;
+        padding: 13px;
+        border: 1px solid rgba(10, 15, 2, .07);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, .76);
+        box-shadow: 0 5px 14px rgba(39, 66, 16, .035);
+        transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+      }
+      .mail-item:hover { transform: translateY(-1px); border-color: rgba(98, 153, 21, .25); box-shadow: 0 10px 22px rgba(39, 66, 16, .08) }
+      .mail-item.is-read { opacity: .7 }
+      .mail-item.is-hidden { display: none }
+      .mail-new-dot {
+        position: absolute;
+        right: 13px;
+        top: 14px;
+        width: 7px;
+        height: 7px;
+        border-radius: 9999px;
+        background: #e7aa24;
+        box-shadow: 0 0 0 4px rgba(231, 170, 36, .11);
+      }
+      .mail-item.is-read .mail-new-dot { display: none }
+      .sender-avatar {
+        position: relative;
+        display: grid;
+        width: 38px;
+        height: 38px;
+        flex: none;
+        place-items: center;
+        border-radius: 9999px;
+        color: #0a0f02;
+        font-size: 13px;
+        font-weight: 650;
+      }
+      .sender-avatar .action-glyph {
+        position: absolute;
+        right: -4px;
+        bottom: -3px;
+        display: grid;
+        width: 18px;
+        height: 18px;
+        place-items: center;
+        border: 2px solid white;
+        border-radius: 9999px;
+        background: #dafca9;
+      }
+      .comment-quote {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border: 1px solid rgba(10, 15, 2, .07);
+        border-radius: 10px;
+        background: #f7f8f6;
+        color: #656664;
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .badge-notice {
+        background: linear-gradient(135deg, rgba(255, 255, 255, .88), rgba(218, 252, 169, .54));
+      }
+      .badge-notice-art {
+        position: relative;
+        width: 52px;
+        height: 52px;
+        flex: none;
+      }
+      .badge-notice-art::before {
+        content: '';
+        position: absolute;
+        inset: 5px;
+        border-radius: 9999px;
+        background: rgba(245, 235, 102, .44);
+        filter: blur(7px);
+        animation: badge-breathe 2.4s ease-in-out infinite;
+      }
+      .badge-notice-art img { position: relative; z-index: 2; width: 100%; height: 100%; object-fit: contain; filter: grayscale(.78) brightness(1.08) }
+      .badge-notice.is-unlocked .badge-notice-art img { filter: drop-shadow(0 0 6px rgba(226, 158, 52, .65)); animation: badge-pop 600ms cubic-bezier(.16, 1, .3, 1) }
+      @keyframes badge-breathe { 50% { opacity: .5; transform: scale(1.14) } }
+      @keyframes badge-pop { 0% { transform: scale(.55) rotate(-12deg) } 62% { transform: scale(1.12) rotate(4deg) } 100% { transform: scale(1) rotate(0) } }
+      .unlock-btn {
+        height: 28px;
+        flex: none;
+        padding: 0 12px;
+        border-radius: 9999px;
+        background: #0a0f02;
+        color: #b8ed6e;
+        font-size: 11px;
+        font-weight: 650;
+        transition: transform 150ms ease, background 150ms ease;
+      }
+      .unlock-btn:hover { transform: scale(1.04); background: #25321c }
+      .unlock-btn:disabled { background: #dafca9; color: #3e403c }
+      .mailbox-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 22px 18px;
+        border-top: 1px solid rgba(10, 15, 2, .06);
+        background: rgba(255, 255, 255, .62);
+      }
+
+      /* 周度数据区：区别于消息列表，但继续沿用 POPO 的视觉语言。 */
+      .weekly-scroll { min-height: 0; flex: 1; overflow-y: auto; padding: 1px 16px 18px; scrollbar-width: thin }
+      .echo-cockpit {
+        position: relative;
+        min-height: 232px;
+        overflow: hidden;
+        border-radius: 24px;
+        background: #0a0f02;
+        color: white;
+        box-shadow: 0 17px 34px rgba(10, 15, 2, .18);
+      }
+      .echo-cockpit::before {
+        content: '';
+        position: absolute;
+        width: 310px;
+        height: 310px;
+        right: -122px;
+        top: -130px;
+        border-radius: 9999px;
+        background: radial-gradient(circle, rgba(124, 240, 175, .95), rgba(184, 237, 110, .35) 38%, transparent 70%);
+        filter: blur(5px);
+      }
+      .echo-cockpit::after {
+        content: '';
+        position: absolute;
+        width: 230px;
+        height: 230px;
+        left: -105px;
+        bottom: -152px;
+        border-radius: 9999px;
+        background: radial-gradient(circle, rgba(255, 203, 233, .72), transparent 66%);
+      }
+      .echo-orbit {
+        position: absolute;
+        right: 23px;
+        top: 50px;
+        width: 118px;
+        height: 118px;
+        border: 1px dashed rgba(218, 252, 169, .52);
+        border-radius: 9999px;
+        animation: avatar-orbit 14s linear infinite;
+      }
+      .echo-orbit::before, .echo-orbit::after {
+        content: '';
+        position: absolute;
+        border-radius: 9999px;
+        background: #dafca9;
+        box-shadow: 0 0 16px rgba(218, 252, 169, .8);
+      }
+      .echo-orbit::before { width: 10px; height: 10px; right: 10px; top: 4px }
+      .echo-orbit::after { width: 6px; height: 6px; left: 8px; bottom: 17px; background: #ffcbe9 }
+      .echo-score {
+        position: absolute;
+        right: 43px;
+        top: 70px;
+        display: grid;
+        width: 78px;
+        height: 78px;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, .18);
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, .09);
+        box-shadow: inset 0 0 0 7px rgba(255, 255, 255, .035);
+        backdrop-filter: blur(8px);
+      }
+      .echo-score b { display: block; color: #dafca9; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums }
+      .echo-score small { display: block; margin-top: 3px; color: rgba(255, 255, 255, .55); font-size: 9px; letter-spacing: .1em }
+      .sparkline { position: absolute; inset: auto 18px 13px; height: 58px; opacity: .95 }
+      .sparkline .area { fill: url(#echoArea) }
+      .sparkline .line { fill: none; stroke: #b8ed6e; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px rgba(184, 237, 110, .55)) }
+      .echo-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px }
+      .echo-stat {
+        position: relative;
+        min-width: 0;
+        overflow: hidden;
+        padding: 12px 10px 11px;
+        border: 1px solid rgba(10, 15, 2, .07);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, .76);
+      }
+      .echo-stat::after { content: ''; position: absolute; right: -16px; bottom: -20px; width: 48px; height: 48px; border-radius: 9999px; background: var(--stat-color, #dafca9); opacity: .22 }
+      .echo-stat b { display: block; color: #0a0f02; font-size: 19px; line-height: 1.15; font-variant-numeric: tabular-nums }
+      .echo-stat span { display: block; margin-top: 5px; color: #90918e; font-size: 10px; white-space: nowrap }
+      .echo-stat em { margin-left: 3px; color: #629915; font-size: 9px; font-style: normal }
+      .work-pulse {
+        margin-top: 12px;
+        padding: 15px;
+        border: 1px solid rgba(10, 15, 2, .07);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, .76);
+      }
+      .pulse-row { display: grid; grid-template-columns: 1fr auto; gap: 9px 14px; padding: 10px 0; border-top: 1px solid rgba(10, 15, 2, .06) }
+      .pulse-row:first-of-type { margin-top: 8px; border-top: 0 }
+      .pulse-bar { grid-column: 1 / -1; height: 5px; overflow: hidden; border-radius: 9999px; background: #eef0eb }
+      .pulse-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7cf0af, #b8ed6e) }
+      .data-note {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+        padding: 10px 12px;
+        border: 1px dashed rgba(98, 153, 21, .28);
+        border-radius: 14px;
+        background: rgba(218, 252, 169, .28);
+        color: #656664;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .demo-peek {
+        position: fixed;
+        right: 22px;
+        bottom: 22px;
+        z-index: 70;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 10px 13px;
+        border: 1px solid rgba(10, 15, 2, .08);
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, .9);
+        color: #3e403c;
+        font-size: 11px;
+        box-shadow: 0 10px 28px rgba(39, 66, 16, .12);
+        backdrop-filter: blur(12px);
+      }
+      .demo-peek i { width: 7px; height: 7px; border-radius: 9999px; background: #7ab023; box-shadow: 0 0 0 4px rgba(122, 176, 35, .14); animation: demo-pulse 1.8s ease-in-out infinite }
+      @keyframes demo-pulse { 50% { box-shadow: 0 0 0 7px rgba(122, 176, 35, 0) } }
+
+      @media (max-width: 640px) {
+        .mailbox-shell { position: fixed; right: 10px; top: 76px; height: calc(100vh - 92px) }
+        .mailbox-bridge { display: none }
+        .echo-stat-grid { grid-template-columns: repeat(2, 1fr) }
+        .mailbox-head { padding-inline: 16px }
+        .mailbox-filters { padding-inline: 16px }
+        .demo-peek { display: none }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .mail-avatar-trigger::before, .mail-avatar-bubble, .mailbox-aura, .badge-notice-art::before, .echo-orbit, .demo-peek i { animation: none }
+      }
+
+      /* ===== V2：紧凑浅色「回声卡匣」 =====
+         依据用户提供的 POPO 家族 IP 规范：真实角色图负责气质，界面本身只做浅色承托。 */
+      .mail-avatar-trigger { width: 48px; height: 48px }
+      .mail-avatar-trigger::before {
+        inset: 1px;
+        background: conic-gradient(from 20deg, rgba(124,240,175,.92), rgba(255,244,183,.95) 30%, rgba(255,203,233,.88) 57%, rgba(119,229,255,.84) 77%, rgba(124,240,175,.92));
+      }
+      .mail-avatar-trigger::after { inset: 4px }
+      .mail-avatar-core { width: 40px; height: 40px; font-size: 18px; box-shadow: 0 2px 8px rgba(50,82,5,.12) }
+      .mail-avatar-bubble { right: 8px; top: -9px; width: 20px; height: 20px; filter: drop-shadow(0 3px 5px rgba(50,82,5,.13)) }
+      .mail-unread { right: -3px; top: -2px; min-width: 18px; height: 18px; border-width: 2px; font-size: 9px }
+      .mailbox-bridge { right: -6px; top: 39px; width: 438px; height: 27px }
+      .mailbox-shell {
+        right: -4px;
+        top: 53px;
+        width: min(408px, calc(100vw - 24px));
+        height: min(560px, calc(100vh - 82px));
+        isolation: isolate;
+      }
+      .mailbox-aura {
+        inset: -10px -12px -14px;
+        border-radius: 28px 34px 30px 28px;
+        background: linear-gradient(145deg, rgba(255,203,233,.34), rgba(218,252,169,.48) 42%, rgba(124,240,175,.26) 70%, rgba(119,229,255,.28));
+        filter: blur(12px) saturate(1.04);
+        opacity: .6;
+      }
+      .mailbox-card {
+        border-color: rgba(255,255,255,.96);
+        border-radius: 24px;
+        background: rgba(250,252,248,.965);
+        box-shadow: 0 18px 48px rgba(39,66,16,.12), 0 5px 16px rgba(39,66,16,.06), inset 0 1px 0 white;
+        backdrop-filter: blur(22px) saturate(1.08);
+      }
+      .mailbox-card::before {
+        height: 86px;
+        background:
+          radial-gradient(circle at 86% 0, rgba(119,229,255,.20), transparent 34%),
+          linear-gradient(125deg, rgba(255,244,183,.48), rgba(218,252,169,.46) 46%, rgba(255,203,233,.22));
+      }
+      .mailbox-card::after {
+        content: '';
+        position: absolute;
+        right: 8px;
+        top: 112px;
+        width: 5px;
+        height: 34px;
+        pointer-events: none;
+        background: radial-gradient(circle, rgba(122,176,35,.38) 0 2px, transparent 2.5px) center top / 5px 11px repeat-y;
+        opacity: .55;
+      }
+      .mailbox-nib { right: 24px; top: -6px; width: 15px; height: 15px; background: rgba(239,255,217,.97) }
+      .mailbox-head { padding: 14px 16px 10px }
+      .mailbox-head h2 { font-size: 16px; line-height: 22px }
+      .mailbox-brandmark {
+        position: relative;
+        width: 47px;
+        height: 43px;
+        overflow: visible;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+      .mailbox-brandmark img { width: 45px; height: 43px; object-fit: contain; filter: drop-shadow(0 5px 7px rgba(42,69,22,.12)) }
+      .mailbox-brandmark::after {
+        content: '叮';
+        position: absolute;
+        right: -2px;
+        top: -4px;
+        display: grid;
+        width: 19px;
+        height: 15px;
+        place-items: center;
+        border: 1px solid rgba(98,153,21,.16);
+        border-radius: 999px 999px 999px 3px;
+        background: white;
+        color: #629915;
+        font-size: 8px;
+        font-weight: 700;
+        box-shadow: 0 3px 8px rgba(42,69,22,.08);
+      }
+      .mailbox-mode {
+        gap: 3px;
+        margin-top: 9px;
+        padding: 3px;
+        border: 0;
+        border-radius: 14px;
+        background: rgba(237,241,234,.9);
+        box-shadow: inset 0 1px 2px rgba(39,66,16,.035);
+      }
+      .mailbox-mode button { height: 31px; border: 1px solid transparent; border-radius: 11px; font-size: 12px }
+      .mailbox-mode button:focus { outline: none }
+      .mailbox-mode button:focus-visible { outline: 2px solid rgba(122,176,35,.42); outline-offset: -2px }
+      .mailbox-mode button.is-active {
+        border-color: rgba(122,176,35,.15);
+        background: linear-gradient(135deg, rgba(218,252,169,.96), rgba(230,255,218,.9));
+        color: #3e403c;
+        box-shadow: 0 2px 7px rgba(74,111,38,.07), inset 0 1px 0 white;
+      }
+      .mailbox-mode .tab-new { min-width: 16px; height: 16px; background: white; color: #629915; font-size: 9px }
+      .mailbox-filters { gap: 5px; padding: 1px 12px 8px }
+      .mail-filter { height: 26px; padding: 0 10px; border-color: rgba(10,15,2,.07); background: white; font-size: 11px }
+      .mail-filter.is-active { border-color: rgba(98,153,21,.18); background: #dafca9; color: #3e403c; box-shadow: inset 0 1px 0 rgba(255,255,255,.75) }
+      .mail-filter.is-active b { color: #629915 }
+      .mail-list { padding: 0 10px 8px }
+      .mail-day { gap: 7px; padding: 5px 6px 5px; font-size: 9px; letter-spacing: .07em }
+      .mail-day-ip { width: 19px; height: 17px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(51,72,39,.1)) }
+      .mail-item {
+        gap: 9px;
+        margin-bottom: 6px;
+        padding: 10px;
+        border-color: rgba(10,15,2,.06);
+        border-radius: 15px;
+        background: rgba(255,255,255,.9);
+        box-shadow: 0 2px 7px rgba(39,66,16,.025);
+      }
+      .mail-item:hover { border-color: rgba(98,153,21,.19); box-shadow: 0 7px 17px rgba(39,66,16,.065) }
+      .mail-new-dot { right: 10px; top: 11px; width: 6px; height: 6px; box-shadow: 0 0 0 3px rgba(231,170,36,.09) }
+      .sender-avatar { width: 34px; height: 34px; font-size: 12px }
+      .sender-avatar .action-glyph { right: -4px; bottom: -3px; width: 17px; height: 17px }
+      .comment-quote { margin-top: 6px; padding: 6px 8px; border-radius: 9px; background: #f5f7f3; font-size: 11px; line-height: 1.45 }
+      .badge-notice { background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(242,255,218,.82)) }
+      .badge-notice-art { width: 44px; height: 44px }
+      .unlock-btn {
+        height: 26px;
+        padding: 0 11px;
+        border: 1px solid rgba(98,153,21,.18);
+        background: linear-gradient(135deg, #dafca9, #eaffd3);
+        color: #3e403c;
+        font-size: 10px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+      }
+      .unlock-btn:hover { background: #cff793 }
+      .unlock-btn:disabled { background: #eef4e8; color: #7b8275 }
+      .mailbox-foot { padding: 8px 14px 10px; background: rgba(255,255,255,.75) }
+      .mailbox-foot > span { font-size: 9px }
+
+      .weekly-scroll { padding: 0 12px 12px }
+      .echo-cockpit {
+        min-height: 174px;
+        border: 1px solid rgba(98,153,21,.10);
+        border-radius: 20px;
+        background:
+          radial-gradient(circle at 86% 18%, rgba(119,229,255,.30), transparent 30%),
+          radial-gradient(circle at 10% 96%, rgba(255,203,233,.35), transparent 38%),
+          linear-gradient(135deg, rgba(250,255,241,.98), rgba(232,255,211,.9) 54%, rgba(239,253,255,.95));
+        color: #0a0f02;
+        box-shadow: 0 6px 18px rgba(58,89,34,.065), inset 0 1px 0 white;
+      }
+      .echo-cockpit::before { width: 180px; height: 180px; right: -76px; top: -92px; background: radial-gradient(circle, rgba(124,240,175,.40), transparent 70%); filter: blur(2px) }
+      .echo-cockpit::after { width: 150px; height: 150px; left: -80px; bottom: -108px; background: radial-gradient(circle, rgba(255,203,233,.35), transparent 68%) }
+      .echo-cockpit > .relative { padding: 15px 15px 12px }
+      .echo-cockpit h3 { margin-top: 9px; max-width: 220px; font-size: 17px; line-height: 23px }
+      .echo-cockpit p { max-width: 218px; font-size: 10px; line-height: 16px }
+      .echo-coco {
+        position: absolute;
+        right: 18px;
+        top: 22px;
+        z-index: 3;
+        width: 78px;
+        height: 68px;
+        object-fit: contain;
+        filter: drop-shadow(0 7px 9px rgba(41,80,74,.12));
+        animation: coco-float 3.8s ease-in-out infinite;
+      }
+      @keyframes coco-float { 50% { transform: translateY(-4px) rotate(-2deg) } }
+      .echo-orbit { right: 18px; top: 78px; width: 76px; height: 76px; border-color: rgba(98,153,21,.28) }
+      .echo-orbit::before { width: 7px; height: 7px; background: #a6e452; box-shadow: 0 0 9px rgba(166,228,82,.4) }
+      .echo-orbit::after { width: 5px; height: 5px; background: #e993ba }
+      .echo-score {
+        right: 30px;
+        top: 90px;
+        width: 52px;
+        height: 52px;
+        border-color: rgba(255,255,255,.9);
+        background: rgba(255,255,255,.78);
+        color: #0a0f02;
+        box-shadow: 0 5px 13px rgba(49,88,35,.09), inset 0 0 0 5px rgba(218,252,169,.28);
+      }
+      .echo-score b { color: #629915; font-size: 22px }
+      .echo-score small { margin-top: 1px; color: #90918e; font-size: 7px }
+      .sparkline { inset: auto 12px 8px; height: 39px }
+      .sparkline .line { stroke: #7ab023; stroke-width: 2; filter: drop-shadow(0 0 3px rgba(122,176,35,.25)) }
+      .echo-stat-grid { gap: 6px; margin-top: 8px }
+      .echo-stat { padding: 9px 8px 8px; border-radius: 14px; background: rgba(255,255,255,.92) }
+      .echo-stat b { font-size: 16px }
+      .echo-stat span { margin-top: 4px; font-size: 9px }
+      .echo-stat em { font-size: 8px }
+      .work-pulse { margin-top: 9px; padding: 11px 12px; border-radius: 17px; background: rgba(255,255,255,.9) }
+      .pulse-row { gap: 6px 10px; padding: 7px 0 }
+      .pulse-bar { height: 4px }
+      .data-note { margin-top: 8px; padding: 8px 9px; border-radius: 12px; background: rgba(255,244,183,.33); font-size: 10px }
+      #fullDataBtn {
+        height: 35px;
+        margin-top: 8px;
+        border: 1px solid rgba(98,153,21,.15);
+        background: linear-gradient(90deg, #dafca9, #e5ffd2);
+        color: #3e403c;
+        box-shadow: inset 0 1px 0 white;
+      }
+      #fullDataBtn:hover { background: #cff793 }
+
+      @media (max-width: 640px) {
+        .mailbox-shell { right: 8px; top: 68px; width: calc(100vw - 16px); height: calc(100vh - 82px) }
+        .mailbox-head { padding-inline: 14px }
+        .mailbox-filters { padding-inline: 10px }
+      }
+      @media (prefers-reduced-motion: reduce) { .echo-coco { animation: none } }
+
+      /* ===== V3：云上玻璃浮层 =====
+         三层结构：极光氛围（CSS 渐变）→ SVG goo 云朵（矢量，任意倍率都锐利）→ 玻璃卡片。
+         全部程序化绘制，没有任何位图，4K / 200% 缩放下都不会出现贴图糊边。 */
+      @property --rim-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg }
+
+      .mailbox-aura {
+        inset: -58px -60px -66px;
+        border-radius: 0;
+        background: none;
+        filter: none;
+        opacity: .6;
+      }
+      .mailbox-cloud {
+        inset: -46px -48px -56px;
+        width: calc(100% + 96px);
+        height: calc(100% + 102px);
+        filter: drop-shadow(0 16px 30px rgba(48, 78, 26, .13)) drop-shadow(0 3px 7px rgba(48, 78, 26, .06));
+      }
+      /* 玻璃卡片：把不透明白降到 .56，靠 backdrop-filter 折射身后的云与极光。 */
+      .mailbox-card {
+        border: 1px solid rgba(255, 255, 255, .9);
+        border-radius: 26px;
+        background:
+          radial-gradient(118% 78% at 50% 116%, rgba(184, 237, 110, .24), transparent 62%),
+          radial-gradient(92% 62% at 6% 104%, rgba(119, 229, 255, .18), transparent 64%),
+          radial-gradient(80% 56% at 96% 96%, rgba(255, 203, 233, .16), transparent 66%),
+          rgba(255, 255, 255, .56);
+        backdrop-filter: blur(26px) saturate(1.38) brightness(1.03);
+        box-shadow:
+          0 22px 54px rgba(39, 66, 16, .1),
+          0 6px 18px rgba(39, 66, 16, .05),
+          inset 0 1px 0 rgba(255, 255, 255, .95),
+          inset 0 -1px 0 rgba(255, 255, 255, .55);
+      }
+      /* 头部极光：把原来一层死渐变换成三团会漂的光，高度加大后向下渐隐。 */
+      .mailbox-card::before {
+        height: 148px;
+        background:
+          radial-gradient(76% 116% at 10% -18%, rgba(218, 252, 169, .72), transparent 62%),
+          radial-gradient(62% 108% at 88% -14%, rgba(119, 229, 255, .4), transparent 60%),
+          radial-gradient(54% 96% at 56% -4%, rgba(255, 203, 233, .34), transparent 64%),
+          radial-gradient(46% 86% at 34% 6%, rgba(255, 244, 183, .42), transparent 66%);
+        background-size: 150% 150%;
+        -webkit-mask-image: linear-gradient(#000 0 42%, transparent);
+        mask-image: linear-gradient(#000 0 42%, transparent);
+        animation: head-aurora 17s ease-in-out infinite alternate;
+      }
+      @keyframes head-aurora {
+        from { background-position: 0% 0%, 100% 0%, 50% 0%, 20% 0% }
+        to { background-position: 30% 12%, 68% 16%, 22% 10%, 60% 14% }
+      }
+      /* 折射描边：一圈缓慢转动的彩虹环，只留 1px 边（mask 挖空内部）。 */
+      /* 云瓣自己就是与头像相连的那一口气，原来的小尖角在云上会变成一块突兀的棱形，去掉。 */
+      .mailbox-nib { display: none }
+      .mailbox-rim {
+        position: absolute;
+        inset: 0;
+        z-index: 6;
+        padding: 1.5px;
+        border-radius: inherit;
+        pointer-events: none;
+        background: conic-gradient(from var(--rim-angle),
+          rgba(184, 237, 110, .95), rgba(255, 244, 183, .9) 20%, rgba(255, 203, 233, .82) 42%,
+          rgba(119, 229, 255, .88) 64%, rgba(124, 240, 175, .92) 84%, rgba(184, 237, 110, .95));
+        -webkit-mask-image: linear-gradient(#000, #000), linear-gradient(#000, #000);
+        -webkit-mask-clip: content-box, border-box;
+        -webkit-mask-composite: xor;
+        mask-image: linear-gradient(#000, #000), linear-gradient(#000, #000);
+        mask-clip: content-box, border-box;
+        mask-composite: exclude;
+        opacity: .8;
+        animation: rim-spin 16s linear infinite;
+      }
+      @keyframes rim-spin { to { --rim-angle: 360deg } }
+      /* 掠光：一道斜向高光缓慢扫过玻璃，卡片 overflow:hidden 负责裁边。 */
+      .mailbox-sheen {
+        position: absolute;
+        inset: -30% -14%;
+        z-index: 5;
+        pointer-events: none;
+        background: linear-gradient(102deg,
+          transparent 36%, rgba(255, 255, 255, .34) 45%, rgba(255, 255, 255, .72) 50%,
+          rgba(255, 255, 255, .3) 55%, transparent 64%);
+        opacity: .55;
+        animation: sheen-sweep 11s ease-in-out infinite;
+      }
+      @keyframes sheen-sweep {
+        0% { transform: translate3d(-78%, 0, 0) }
+        52%, 100% { transform: translate3d(78%, 0, 0) }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .aura-blob, .mailbox-cloud, .mailbox-rim, .mailbox-sheen, .mailbox-card::before { animation: none }
+      }
+
+      /* ===== V4：评审版「极光回声舱」 =====
+         质感由实时玻璃、矢量描边、程序化折射和 SVG 图表构成；不使用背景贴图。 */
+      .mailbox-shell {
+        width: clamp(416px, 28vw, 492px);
+        height: min(640px, calc(100vh - 92px));
+        border-radius: 29px;
+      }
+      .mailbox-cloud { inset: -50px -52px -58px; width: calc(100% + 104px); height: calc(100% + 108px); opacity: .88 }
+      .mailbox-card {
+        --gx: 82%;
+        --gy: 5%;
+        border-color: rgba(255,255,255,.94);
+        border-radius: 29px;
+        background:
+          radial-gradient(520px circle at var(--gx) var(--gy), rgba(255,255,255,.66), transparent 44%),
+          radial-gradient(92% 72% at 6% 106%, rgba(119,229,255,.16), transparent 62%),
+          radial-gradient(86% 66% at 94% 106%, rgba(255,203,233,.15), transparent 66%),
+          linear-gradient(180deg, rgba(255,255,255,.65), rgba(248,251,246,.56));
+        box-shadow:
+          0 38px 92px rgba(39,66,16,.15),
+          0 12px 32px rgba(39,66,16,.075),
+          inset 0 1px 0 rgba(255,255,255,.98),
+          inset 0 -1px 0 rgba(255,255,255,.52);
+        backdrop-filter: blur(34px) saturate(1.28) brightness(1.03);
+      }
+      .mailbox-card::after {
+        right: 12px;
+        top: 132px;
+        width: 5px;
+        height: 49px;
+        background: radial-gradient(circle, rgba(122,176,35,.34) 0 1.8px, transparent 2.2px) center top / 5px 12px repeat-y;
+        opacity: .65;
+      }
+      .mailbox-head {
+        padding: 17px 18px 12px;
+        border-bottom: 1px solid rgba(10,15,2,.055);
+        background: linear-gradient(112deg, rgba(255,255,255,.24), rgba(236,255,217,.16) 54%, rgba(228,250,255,.18));
+      }
+      .mailbox-head::after {
+        content: '';
+        position: absolute;
+        left: 24px;
+        right: 24px;
+        bottom: -1px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(122,176,35,.15), rgba(119,229,255,.17), transparent);
+      }
+      .mailbox-brandmark {
+        width: 47px;
+        height: 47px;
+        border: 1px solid rgba(255,255,255,.9);
+        border-radius: 18px 18px 18px 7px;
+        background:
+          radial-gradient(circle at 28% 22%, rgba(255,255,255,.95), transparent 36%),
+          linear-gradient(145deg, rgba(255,244,183,.80), rgba(190,248,222,.72) 55%, rgba(213,236,255,.75));
+        box-shadow: 0 9px 22px rgba(47,79,30,.105), inset 0 1px 0 white;
+      }
+      .mailbox-brandmark img { width: 40px; height: 40px; filter: drop-shadow(0 6px 8px rgba(42,69,22,.10)) }
+      .mailbox-brandmark::after { content: none }
+      .mark-read {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid rgba(10,15,2,.07);
+        background: rgba(255,255,255,.55);
+        color: #656664;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.94), 0 4px 12px rgba(47,79,30,.045);
+      }
+      .mark-read:hover { transform: translateY(-1px); border-color: rgba(98,153,21,.18); background: rgba(255,255,255,.88); color: #3e403c }
+      .mailbox-mode {
+        position: relative;
+        gap: 4px;
+        margin-top: 13px;
+        padding: 4px;
+        border: 1px solid rgba(255,255,255,.74);
+        border-radius: 16px;
+        background: rgba(232,236,229,.55);
+        box-shadow: inset 0 1px 3px rgba(47,70,30,.04), 0 1px 0 rgba(255,255,255,.82);
+      }
+      .mailbox-mode button { position: relative; height: 34px; border-radius: 12px; color: #7a7d77; font-weight: 560 }
+      .mailbox-mode button.is-active {
+        border-color: rgba(255,255,255,.84);
+        background:
+          radial-gradient(circle at 12% 18%, rgba(255,244,183,.60), transparent 42%),
+          linear-gradient(135deg, rgba(255,255,255,.94), rgba(233,255,213,.84));
+        color: #2d3228;
+        box-shadow: 0 6px 17px rgba(47,79,30,.095), inset 0 1px 0 white;
+      }
+      .mailbox-mode button.is-active::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: 2px;
+        width: 24px;
+        height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg,#7cf0af,#9ed94b);
+        transform: translateX(-50%);
+        box-shadow: 0 0 7px rgba(124,240,175,.48);
+      }
+      .mailbox-mode button:focus { outline: none }
+      .mailbox-mode button:focus-visible { outline: 2px solid rgba(122,176,35,.36); outline-offset: -2px }
+      .mailbox-mode .tab-new { border: 1px solid rgba(98,153,21,.10); background: rgba(255,255,255,.86); box-shadow: 0 2px 6px rgba(50,82,5,.07) }
+      .mailbox-filters {
+        z-index: 3;
+        gap: 6px;
+        padding: 10px 16px 9px;
+        border-bottom: 1px solid rgba(10,15,2,.045);
+        background: rgba(255,255,255,.22);
+      }
+      .mail-filter {
+        height: 28px;
+        padding: 0 11px;
+        border-color: rgba(10,15,2,.06);
+        background: rgba(255,255,255,.62);
+        color: #767a73;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+      }
+      .mail-filter:hover { transform: translateY(-1px); border-color: rgba(98,153,21,.16); background: rgba(255,255,255,.92) }
+      .mail-filter.is-active {
+        border-color: rgba(98,153,21,.16);
+        background: linear-gradient(135deg, rgba(218,252,169,.92), rgba(237,255,221,.87));
+        color: #3e403c;
+        box-shadow: 0 4px 10px rgba(69,107,34,.07), inset 0 1px 0 white;
+      }
+      .mail-list {
+        position: relative;
+        padding: 3px 14px 11px;
+        background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(242,248,238,.20));
+      }
+      .mail-list::before {
+        content: '';
+        position: absolute;
+        left: 36px;
+        top: 31px;
+        bottom: 18px;
+        width: 1px;
+        background: linear-gradient(180deg, rgba(124,240,175,.58), rgba(255,203,233,.35) 45%, rgba(119,229,255,.33), transparent);
+      }
+      .mail-day { position: relative; z-index: 2; padding: 7px 7px 6px; color: #969b91 }
+      .mail-day::after { background: linear-gradient(90deg, rgba(10,15,2,.07), transparent) }
+      .mail-day-ip { width: 21px; height: 19px }
+      .mail-item {
+        position: relative;
+        z-index: 2;
+        gap: 11px;
+        margin-bottom: 8px;
+        padding: 11px;
+        border: 1px solid transparent;
+        border-radius: 18px;
+        background:
+          linear-gradient(rgba(255,255,255,.81), rgba(252,253,251,.80)) padding-box,
+          linear-gradient(132deg, rgba(255,255,255,.96), rgba(194,237,206,.40), rgba(255,225,239,.36)) border-box;
+        box-shadow: 0 8px 23px rgba(46,70,31,.055), inset 0 1px 0 rgba(255,255,255,.93);
+        backdrop-filter: blur(13px);
+      }
+      .mail-item::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        pointer-events: none;
+        background: radial-gradient(165px circle at 12% 8%, rgba(218,252,169,.18), transparent 56%);
+      }
+      .mail-item:hover { transform: translateY(-2px); border-color: transparent; box-shadow: 0 14px 31px rgba(46,70,31,.085), inset 0 1px 0 white }
+      .mail-new-dot { right: 11px; top: 12px; background: #eeb735; box-shadow: 0 0 0 3px rgba(238,183,53,.10), 0 0 10px rgba(238,183,53,.30) }
+      .sender-avatar {
+        z-index: 2;
+        border: 1px solid rgba(255,255,255,.92);
+        box-shadow: 0 6px 14px rgba(47,79,30,.10), inset 0 1px 0 rgba(255,255,255,.78);
+      }
+      .sender-avatar .action-glyph { border-color: rgba(255,255,255,.96); background: linear-gradient(145deg,#efffdc,#cef792); box-shadow: 0 3px 8px rgba(52,93,25,.10) }
+      .comment-quote { border-color: rgba(10,15,2,.05); background: rgba(244,247,242,.72); box-shadow: inset 0 1px 2px rgba(31,48,22,.025) }
+      .badge-notice {
+        background:
+          radial-gradient(circle at 94% 0, rgba(255,244,183,.52), transparent 35%) padding-box,
+          linear-gradient(138deg, rgba(255,255,255,.97), rgba(255,218,235,.60), rgba(215,255,184,.76)) border-box;
+      }
+      .badge-notice-art { width: 50px; height: 50px }
+      .badge-notice-art::before { inset: 3px; background: conic-gradient(from 30deg, rgba(255,226,241,.50), rgba(218,252,169,.54), rgba(255,244,183,.54), rgba(255,226,241,.50)); filter: blur(6px) }
+      .unlock-btn {
+        border-color: rgba(98,153,21,.18);
+        background: radial-gradient(circle at 28% 10%, rgba(255,255,255,.98), transparent 36%), linear-gradient(135deg,#e5ffc0,#cbf68f);
+        box-shadow: 0 5px 13px rgba(77,120,35,.10), inset 0 1px 0 white;
+      }
+      .mailbox-foot {
+        position: relative;
+        z-index: 3;
+        padding: 10px 17px 13px;
+        border-top-color: rgba(10,15,2,.05);
+        background: rgba(250,252,248,.72);
+        backdrop-filter: blur(15px);
+      }
+
+      .weekly-scroll { position: relative; z-index: 2; padding: 13px 14px 15px; background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(241,248,237,.22)) }
+      .echo-cockpit {
+        min-height: 218px;
+        border: 1px solid transparent;
+        border-radius: 23px;
+        background:
+          linear-gradient(145deg, rgba(255,255,255,.77), rgba(245,255,232,.68)) padding-box,
+          linear-gradient(132deg, rgba(255,255,255,.98), rgba(168,241,206,.72), rgba(255,213,234,.66), rgba(255,242,159,.68)) border-box;
+        box-shadow: 0 18px 40px rgba(56,92,35,.10), inset 0 1px 0 white;
+        backdrop-filter: blur(19px);
+      }
+      .echo-cockpit::before {
+        width: 252px;
+        height: 252px;
+        right: -108px;
+        top: -130px;
+        background: radial-gradient(circle at 50% 50%, transparent 0 33%, rgba(255,255,255,.48) 33.5% 34%, transparent 34.5% 46%, rgba(122,176,35,.11) 46.5% 47%, transparent 47.5%), conic-gradient(from 35deg, rgba(124,240,175,.42), rgba(119,229,255,.19), rgba(255,203,233,.28), rgba(255,244,183,.34), rgba(124,240,175,.42));
+        filter: none;
+        opacity: .86;
+      }
+      .echo-cockpit::after { width: 210px; height: 210px; left: -118px; bottom: -142px; background: radial-gradient(circle, rgba(255,207,232,.36), rgba(255,244,183,.19) 44%, transparent 70%) }
+      .echo-cockpit > .relative { padding: 18px 18px 13px }
+      .echo-cockpit h3 { margin-top: 12px; max-width: 248px; font-size: 19px; line-height: 26px; letter-spacing: -.01em }
+      .echo-cockpit p { max-width: 240px; font-size: 10.5px; line-height: 17px }
+      .echo-ip {
+        position: absolute;
+        right: 19px;
+        top: 17px;
+        z-index: 3;
+        display: flex;
+        width: 98px;
+        height: 84px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255,255,255,.80);
+        border-radius: 31px 31px 31px 13px;
+        background: rgba(255,255,255,.23);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.90), 0 10px 23px rgba(42,88,73,.075);
+        backdrop-filter: blur(11px);
+        animation: echo-float 4.2s ease-in-out infinite;
+      }
+      .echo-ip img { width: 77px; height: 67px; object-fit: contain; filter: drop-shadow(0 8px 10px rgba(41,80,74,.12)) }
+      .echo-ip span { position: absolute; right: 4px; bottom: -8px; padding: 3px 7px; border: 1px solid rgba(98,153,21,.10); border-radius: 999px; background: rgba(255,255,255,.90); color: #7c8276; font-size: 7px; letter-spacing: .04em; white-space: nowrap; box-shadow: 0 4px 10px rgba(47,79,30,.07) }
+      @keyframes echo-float { 50% { transform: translateY(-4px) rotate(-1deg) } }
+      .echo-orbit { right: 30px; top: 103px; width: 79px; height: 79px; border-color: rgba(98,153,21,.25) }
+      .echo-score { right: 42px; top: 115px; width: 55px; height: 55px; background: rgba(255,255,255,.78); box-shadow: 0 8px 19px rgba(49,88,35,.10), inset 0 0 0 5px rgba(218,252,169,.31) }
+      .echo-score b { font-size: 23px }
+      .sparkline { inset: auto 15px 10px; height: 45px }
+      .sparkline .area { opacity: .72 }
+      .sparkline .line { stroke-width: 2.2; stroke-dasharray: 540; stroke-dashoffset: 540; animation: echo-draw 1.15s .1s cubic-bezier(.22,.8,.24,1) forwards }
+      @keyframes echo-draw { to { stroke-dashoffset: 0 } }
+      .echo-stat-grid { gap: 7px; margin-top: 10px }
+      .echo-stat {
+        min-height: 63px;
+        padding: 10px 9px 9px;
+        border-color: rgba(255,255,255,.76);
+        border-radius: 16px;
+        background: rgba(255,255,255,.72);
+        box-shadow: 0 8px 19px rgba(44,73,27,.052), inset 0 1px 0 white;
+        backdrop-filter: blur(12px);
+      }
+      .echo-stat::before { content: ''; position: absolute; left: 9px; top: 7px; width: 14px; height: 2px; border-radius: 999px; background: var(--stat-color); opacity: .84 }
+      .echo-stat::after { right: -13px; bottom: -17px; width: 46px; height: 46px; filter: blur(1px) }
+      .echo-stat b { margin-top: 5px; font-size: 17px }
+      .work-pulse {
+        margin-top: 10px;
+        padding: 13px 14px;
+        border: 1px solid rgba(255,255,255,.78);
+        border-radius: 19px;
+        background: rgba(255,255,255,.70);
+        box-shadow: 0 11px 25px rgba(44,73,27,.055), inset 0 1px 0 white;
+        backdrop-filter: blur(12px);
+      }
+      .pulse-row { padding: 8px 0 }
+      .pulse-bar { height: 5px; border: 1px solid rgba(10,15,2,.025); background: rgba(235,239,232,.84); box-shadow: inset 0 1px 2px rgba(45,65,33,.04) }
+      .pulse-bar span { background: linear-gradient(90deg,#73e8af,#b9ec70,#f3ec8d); box-shadow: 0 0 8px rgba(124,240,175,.24) }
+      .data-note {
+        gap: 9px;
+        padding: 10px 11px;
+        border: 1px solid rgba(98,153,21,.10);
+        border-radius: 15px;
+        background: radial-gradient(circle at 0 50%, rgba(255,236,157,.30), transparent 40%), linear-gradient(120deg, rgba(255,255,255,.62), rgba(244,255,226,.64));
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.90);
+      }
+      .insight-orb { display: grid; width: 30px; height: 30px; flex: none; place-items: center; border: 1px solid rgba(255,255,255,.90); border-radius: 12px 12px 12px 5px; background: linear-gradient(145deg,#fff3bd,#d7ffc2); color: #629915; box-shadow: 0 5px 12px rgba(75,109,39,.08), inset 0 1px 0 white }
+      #fullDataBtn { height: 39px; border-color: rgba(98,153,21,.12); background: radial-gradient(circle at 12% 0, rgba(255,255,255,.95), transparent 28%), linear-gradient(100deg, rgba(218,252,169,.92), rgba(211,250,226,.90), rgba(229,246,255,.91)); box-shadow: 0 8px 19px rgba(70,106,36,.075), inset 0 1px 0 white }
+      #fullDataBtn:hover { background: linear-gradient(100deg,#d5faa0,#ccf6dc,#e0f4ff); box-shadow: 0 11px 22px rgba(70,106,36,.10), inset 0 1px 0 white }
+
+      @media (min-width: 2200px) { .mailbox-shell { right: -8px; top: 58px; width: 492px; height: 640px } }
+      @media (max-width: 640px) {
+        .mailbox-shell { right: 8px; top: 68px; width: calc(100vw - 16px); height: min(620px, calc(100vh - 82px)) }
+        .mailbox-cloud { inset: -34px -22px -40px; width: calc(100% + 44px); height: calc(100% + 74px) }
+        .mailbox-head { padding: 14px }
+        .mailbox-filters { padding-inline: 11px }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .echo-ip, .sparkline .line { animation: none }
+        .sparkline .line { stroke-dashoffset: 0 }
+      }
+
+      /* ===== V5：评审修正版「POPO 活动面板」 =====
+         去除云朵外壳与装饰贴片，质感只来自透明材质、排版、边界和真实交互。 */
+      .mailbox-shell {
+        right: -3px;
+        top: 62px;
+        width: min(432px, calc(100vw - 16px));
+        height: min(600px, calc(100vh - 78px));
+        border-radius: 24px;
+        filter: none;
+      }
+      .mailbox-aura,
+      .mailbox-cloud,
+      .mailbox-rim,
+      .mailbox-sheen { display: none !important }
+      .mailbox-nib {
+        display: block;
+        position: absolute;
+        right: 23px;
+        top: -6px;
+        z-index: 7;
+        width: 13px;
+        height: 13px;
+        border-top: 1px solid rgba(10,15,2,.12);
+        border-left: 1px solid rgba(10,15,2,.12);
+        border-radius: 3px 0 0 0;
+        background: rgba(249,251,247,.94);
+        transform: rotate(45deg);
+        box-shadow: -2px -2px 6px rgba(39,54,27,.025);
+      }
+      .mailbox-card {
+        --gx: 84%;
+        --gy: 4%;
+        border: 1px solid rgba(10,15,2,.12);
+        border-radius: 24px;
+        background:
+          radial-gradient(300px circle at var(--gx) var(--gy), rgba(255,255,255,.72), transparent 64%),
+          rgba(248,250,247,.91);
+        box-shadow:
+          0 24px 64px rgba(28,42,17,.12),
+          0 6px 18px rgba(28,42,17,.055),
+          inset 0 1px 0 rgba(255,255,255,.96);
+        backdrop-filter: blur(28px) saturate(1.12);
+      }
+      .mailbox-card::before {
+        content: '';
+        position: absolute;
+        inset: 0 28px auto;
+        z-index: 8;
+        display: block;
+        width: auto;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,.98), transparent);
+        opacity: 1;
+        animation: none;
+        -webkit-mask-image: none;
+        mask-image: none;
+      }
+      .mailbox-card::after { content: none }
+      .mailbox-head {
+        padding: 15px 16px 0;
+        border-bottom: 1px solid rgba(10,15,2,.075);
+        background: rgba(255,255,255,.38);
+      }
+      .mailbox-head::after { content: none }
+      .mailbox-head > .flex { min-height: 43px }
+      .mailbox-brandmark {
+        width: 38px;
+        height: 38px;
+        border: 1px solid rgba(10,15,2,.07);
+        border-radius: 12px;
+        background: #eff6e9;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+      }
+      .mailbox-brandmark img {
+        width: 30px;
+        height: 30px;
+        filter: none;
+      }
+      .mark-read {
+        border-color: rgba(10,15,2,.08);
+        background: rgba(255,255,255,.7);
+        box-shadow: none;
+      }
+      .mark-read:hover { transform: none; border-color: rgba(98,153,21,.28); background: white }
+      .mailbox-mode {
+        gap: 24px;
+        margin-top: 11px;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+      .mailbox-mode button {
+        height: 39px;
+        border-radius: 0;
+        background: transparent;
+        color: #7b7f77;
+        font-size: 12px;
+        font-weight: 560;
+      }
+      .mailbox-mode button.is-active {
+        border: 0;
+        background: transparent;
+        color: #0a0f02;
+        box-shadow: none;
+      }
+      .mailbox-mode button.is-active::after {
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        width: auto;
+        height: 2px;
+        background: #8bc53f;
+        transform: none;
+        box-shadow: none;
+      }
+      .mailbox-mode .tab-new {
+        min-width: 16px;
+        height: 16px;
+        border: 0;
+        background: #dafca9;
+        box-shadow: none;
+      }
+      .mailbox-filters {
+        gap: 2px;
+        padding: 9px 12px;
+        border-bottom: 1px solid rgba(10,15,2,.06);
+        background: rgba(243,246,241,.74);
+      }
+      .mail-filter {
+        height: 27px;
+        padding: 0 10px;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        color: #747872;
+        font-size: 11px;
+      }
+      .mail-filter:hover { transform: none; border: 0; background: rgba(255,255,255,.7) }
+      .mail-filter.is-active {
+        border: 0;
+        background: #e3f8c5;
+        color: #39442f;
+        box-shadow: none;
+      }
+      .mail-list {
+        padding: 4px 12px 8px;
+        background: transparent;
+      }
+      .mail-list::before { content: none }
+      .mail-day {
+        gap: 7px;
+        padding: 8px 8px 5px;
+        color: #8b8f88;
+        font-size: 9px;
+        letter-spacing: .08em;
+      }
+      .mail-day::before {
+        content: '';
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #9bd054;
+      }
+      .mail-day::after { background: rgba(10,15,2,.065) }
+      .mail-day-ip { display: none }
+      .mail-item {
+        gap: 10px;
+        margin: 0 0 2px;
+        padding: 12px 10px;
+        border: 0;
+        border-bottom: 1px solid rgba(10,15,2,.065);
+        border-radius: 12px;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+      .mail-item::after { content: none }
+      .mail-item:hover {
+        transform: none;
+        border-color: rgba(10,15,2,.065);
+        background: rgba(255,255,255,.68);
+        box-shadow: none;
+      }
+      .mail-item.is-read { opacity: .58 }
+      .mail-new-dot {
+        right: 10px;
+        top: 15px;
+        width: 6px;
+        height: 6px;
+        background: #e7aa24;
+        box-shadow: none;
+      }
+      .sender-avatar {
+        width: 34px;
+        height: 34px;
+        border: 0;
+        box-shadow: none;
+      }
+      .sender-avatar .action-glyph {
+        border-color: #f8faf7;
+        background: #dafca9;
+        box-shadow: none;
+      }
+      .comment-quote {
+        margin-top: 6px;
+        border-color: rgba(10,15,2,.065);
+        background: rgba(238,241,235,.72);
+        box-shadow: none;
+      }
+      .badge-notice {
+        margin: 5px 0 7px;
+        border: 1px solid rgba(152,118,38,.15);
+        background: #fffdf3;
+      }
+      .badge-notice:hover { border-color: rgba(152,118,38,.23); background: #fffdf3 }
+      .badge-notice-art { width: 46px; height: 46px }
+      .badge-notice-art::before { content: none }
+      .badge-notice-art img { filter: grayscale(.76) brightness(1.07) }
+      .unlock-btn {
+        border: 1px solid rgba(98,153,21,.2);
+        background: #dafca9;
+        color: #39442f;
+        box-shadow: none;
+      }
+      .unlock-btn:hover { transform: none; background: #cef393 }
+      .mailbox-foot {
+        padding: 9px 16px 11px;
+        border-top-color: rgba(10,15,2,.07);
+        background: rgba(248,250,247,.94);
+        backdrop-filter: none;
+      }
+
+      .weekly-scroll {
+        padding: 12px;
+        background: transparent;
+      }
+      .echo-cockpit {
+        min-height: 194px;
+        border: 1px solid rgba(10,15,2,.09);
+        border-radius: 18px;
+        background-color: #f2f7ee;
+        background-image:
+          linear-gradient(rgba(80,103,62,.055) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(80,103,62,.055) 1px, transparent 1px);
+        background-size: 28px 28px;
+        color: #0a0f02;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+      .echo-cockpit::before {
+        content: '';
+        position: absolute;
+        left: 18px;
+        top: 17px;
+        width: 22px;
+        height: 3px;
+        border-radius: 99px;
+        background: #8bc53f;
+        opacity: 1;
+      }
+      .echo-cockpit::after { display: none }
+      .echo-cockpit > .relative { padding: 29px 18px 12px }
+      .echo-cockpit h3 { margin-top: 9px; max-width: 248px; font-size: 18px; line-height: 24px }
+      .echo-cockpit p { max-width: 250px; font-size: 10px; line-height: 16px }
+      .echo-ip {
+        right: 15px;
+        top: 14px;
+        width: auto;
+        height: 24px;
+        padding: 0 8px;
+        border: 1px solid rgba(10,15,2,.08);
+        border-radius: 999px;
+        background: rgba(255,255,255,.8);
+        box-shadow: none;
+        backdrop-filter: none;
+        animation: none;
+      }
+      .echo-ip img { display: none }
+      .echo-ip span {
+        position: static;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        color: #656b60;
+        font-size: 8px;
+        letter-spacing: .04em;
+      }
+      .echo-orbit { display: none }
+      .echo-score {
+        right: 19px;
+        top: 64px;
+        width: 62px;
+        height: 62px;
+        border: 0;
+        background:
+          radial-gradient(circle, #f8fbf5 0 60%, transparent 61%),
+          conic-gradient(#8bc53f 0 86%, #dce5d6 86% 100%);
+        box-shadow: 0 5px 14px rgba(46,63,32,.08);
+      }
+      .echo-score b { color: #547f1f; font-size: 23px }
+      .echo-score small { color: #73796e; font-size: 7px }
+      .sparkline { inset: auto 14px 9px; height: 43px }
+      .sparkline .area { opacity: .32 }
+      .sparkline .line { stroke: #78aa37; stroke-width: 2; filter: none }
+      .echo-stat-grid { gap: 6px; margin-top: 8px }
+      .echo-stat {
+        min-height: 61px;
+        padding: 10px 9px 8px;
+        border: 1px solid rgba(10,15,2,.08);
+        border-radius: 13px;
+        background: rgba(255,255,255,.72);
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+      .echo-stat::before { left: 9px; top: 7px; width: 13px; height: 2px }
+      .echo-stat::after { content: none }
+      .echo-stat b { margin-top: 5px; font-size: 17px }
+      .work-pulse {
+        margin-top: 8px;
+        padding: 12px;
+        border: 1px solid rgba(10,15,2,.08);
+        border-radius: 16px;
+        background: rgba(255,255,255,.72);
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+      .pulse-row { padding: 8px 0 }
+      .pulse-bar { height: 4px; border: 0; background: #e7ebe4; box-shadow: none }
+      .pulse-bar span { background: #93ca4b; box-shadow: none }
+      .data-note {
+        gap: 9px;
+        padding: 10px 11px;
+        border: 1px solid rgba(10,15,2,.075);
+        border-radius: 14px;
+        background: #f3f6f0;
+        box-shadow: none;
+      }
+      .insight-orb {
+        width: 28px;
+        height: 28px;
+        border: 1px solid rgba(98,153,21,.16);
+        border-radius: 9px;
+        background: #e5f6cc;
+        box-shadow: none;
+      }
+      #fullDataBtn {
+        height: 37px;
+        border-color: rgba(98,153,21,.18);
+        background: #dafca9;
+        box-shadow: none;
+      }
+      #fullDataBtn:hover { background: #cef393; box-shadow: none }
+
+      @media (min-width: 2200px) {
+        .mailbox-shell { right: -2px; top: 62px; width: 448px; height: 610px }
+      }
+      @media (max-width: 640px) {
+        .mailbox-shell { right: 8px; top: 66px; width: calc(100vw - 16px); height: min(600px, calc(100vh - 78px)) }
+        .mailbox-head { padding-inline: 14px }
+      }
+
+    </style>
+    <link rel="stylesheet" href="./mailbox-typography.css" />
+    <link rel="stylesheet" href="./personal-report.css" />
+    <style>
+      /* Static export mode: turns either mailbox state into a standalone long canvas. */
+      body.export-mode { width: 432px; min-width: 432px; min-height: 0; overflow: visible; background: #ffffff; }
+      body.export-mode .home-page { min-height: 0; background: transparent; }
+      body.export-mode .home-page > .pointer-events-none,
+      body.export-mode main,
+      body.export-mode .demo-peek,
+      body.export-mode #postModal,
+      body.export-mode #toast { display: none !important; }
+      body.export-mode header { position: static !important; display: block; border: 0; }
+      body.export-mode header > div { display: block; height: auto; max-width: none; padding: 0; }
+      body.export-mode header > div > a,
+      body.export-mode header > div > .ml-auto > #postBtn { display: none !important; }
+      body.export-mode header > div > .ml-auto { display: block; margin: 0; }
+      body.export-mode #mailboxRoot { display: block; width: 432px; }
+      body.export-mode #avatarTrigger,
+      body.export-mode .mailbox-bridge { display: none !important; }
+      body.export-mode #mailboxShell {
+        position: static !important;
+        right: auto !important;
+        top: auto !important;
+        width: 432px !important;
+        height: auto !important;
+        max-height: none !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        transform: none !important;
+        pointer-events: auto !important;
+      }
+      body.export-mode .mailbox-card,
+      body.export-mode .mailbox-view,
+      body.export-mode .mail-list,
+      body.export-mode .weekly-scroll {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+      }
+      body.export-mode .mailbox-view:not(.export-active) { display: none !important; }
+      body.export-mode .mailbox-view.export-active { display: flex !important; }
+      body.export-mode .mailbox-card { border-radius: 24px; }
+      body.export-mode .mailbox-card * { animation: none !important; transition: none !important; }
+
+      /* Embedded mailbox mode: the parent page owns the avatar and positioning. */
+      body.embed-mode {
+        width: 100vw;
+        height: 100vh;
+        min-height: 0 !important;
+        margin: 0;
+        overflow: hidden;
+        background: transparent !important;
+      }
+      body.embed-mode .home-page {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        background: transparent;
+      }
+      body.embed-mode .home-page > .pointer-events-none,
+      body.embed-mode main,
+      body.embed-mode .demo-peek,
+      body.embed-mode #postModal,
+      body.embed-mode #toast { display: none !important; }
+      body.embed-mode header {
+        position: static !important;
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: transparent;
+      }
+      body.embed-mode header > div {
+        display: block;
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        padding: 0;
+      }
+      body.embed-mode header > div > a,
+      body.embed-mode #postBtn,
+      body.embed-mode #avatarTrigger,
+      body.embed-mode .mailbox-bridge { display: none !important; }
+      body.embed-mode header > div > .ml-auto,
+      body.embed-mode #mailboxRoot {
+        display: block;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+      body.embed-mode #mailboxShell {
+        position: static !important;
+        right: auto !important;
+        top: auto !important;
+        width: 100% !important;
+        height: 100% !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        transform: none !important;
+        pointer-events: auto !important;
+      }
+    </style>
+  </head>
+  <body class="embed-mode min-h-dvh bg-white text-zinc-950">
+    <div class="home-page relative min-h-screen bg-white text-zinc-950">
+      <div class="pointer-events-none absolute inset-x-0 top-0 z-0 h-[60vh] overflow-hidden">
+        <img src="./images/home-aurora-bg.png" alt="" class="absolute left-1/2 top-[-88px] w-[max(1180px,100vw)] max-w-none -translate-x-1/2 select-none opacity-95" />
+        <div class="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-b from-transparent to-white"></div>
+      </div>
+      <header class="sticky top-0 z-40 w-full border-b border-transparent bg-transparent">
+        <div class="relative z-10 mx-auto flex h-[72px] max-w-[1920px] items-center gap-3 px-4 sm:px-6 md:h-[80px] md:gap-6 md:px-8 lg:px-[100px]">
+          <a href="#" class="flex shrink-0 items-center" aria-label="POPO 首页">
+            <img src="./images/logo.png" alt="POPO" class="h-7 w-auto sm:h-8" />
+          </a>
+          <div class="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+            <button id="postBtn" type="button" class="relative mx-1.5 flex h-8 cursor-pointer items-center justify-center rounded-[11px] bg-black px-5 text-[13px] font-medium tracking-wide text-white transition hover:scale-105 hover:bg-zinc-900 active:scale-95 max-sm:mx-0 max-sm:px-3 max-sm:text-[12px]">
+              <span aria-hidden class="absolute -left-[3px] -top-[3px] h-3 w-3 rounded-tl-[11px] border-l-2 border-t-2 border-black"></span>
+              发个泡泡
+              <span aria-hidden class="absolute -bottom-[3px] -right-[3px] h-3 w-3 rounded-br-[11px] border-b-2 border-r-2 border-black"></span>
+            </button>
+            <div id="mailboxRoot" class="mailbox-root relative flex shrink-0 items-center">
+              <button id="avatarTrigger" type="button" class="mail-avatar-trigger" aria-haspopup="dialog" aria-controls="mailboxShell" aria-expanded="false" aria-label="打开泡泡动态，5 条未读">
+                <span class="mail-avatar-core">张</span>
+                <img src="./images/popo-ip/popo.png" alt="" class="mail-avatar-bubble" />
+                <span id="avatarUnread" class="mail-unread">5</span>
+              </button>
+              <div class="mailbox-bridge" aria-hidden="true"></div>
+              <section id="mailboxShell" class="mailbox-shell" role="dialog" aria-label="泡泡动态与每周冒泡">
+                <div class="mailbox-aura" aria-hidden="true">
+                  <i class="aura-blob b-lime"></i>
+                  <i class="aura-blob b-mint"></i>
+                  <i class="aura-blob b-pink"></i>
+                  <i class="aura-blob b-sky"></i>
+                  <i class="aura-blob b-sun"></i>
+                </div>
+                <svg class="mailbox-cloud" viewBox="0 0 504 662" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                  <defs>
+                    <filter id="mbGoo" x="-18%" y="-15%" width="136%" height="130%" color-interpolation-filters="sRGB">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blr" />
+                      <feColorMatrix in="blr" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8" />
+                    </filter>
+                    <linearGradient id="mbCloudFill" x1="0.1" y1="0" x2="0.55" y2="1">
+                      <stop offset="0" stop-color="#ffffff" stop-opacity=".92" />
+                      <stop offset=".45" stop-color="#fdfffb" stop-opacity=".87" />
+                      <stop offset="1" stop-color="#f7fdff" stop-opacity=".82" />
+                    </linearGradient>
+                  </defs>
+                  <g filter="url(#mbGoo)" fill="url(#mbCloudFill)">
+                    <rect x="48" y="46" width="408" height="560" rx="30" />
+                    <circle cx="108" cy="62" r="56" /><circle cx="196" cy="70" r="40" /><circle cx="276" cy="58" r="56" />
+                    <circle cx="358" cy="68" r="44" /><circle cx="428" cy="64" r="48" />
+                    <circle cx="64" cy="74" r="44" /><circle cx="440" cy="76" r="42" />
+                    <circle cx="64" cy="580" r="44" /><circle cx="440" cy="578" r="42" />
+                    <circle cx="108" cy="592" r="54" /><circle cx="194" cy="584" r="38" /><circle cx="274" cy="596" r="56" />
+                    <circle cx="356" cy="586" r="42" /><circle cx="428" cy="590" r="46" />
+                  </g>
+                </svg>
+                <div class="mailbox-nib" aria-hidden="true"></div>
+                <div class="mailbox-card">
+                  <div class="mailbox-rim" aria-hidden="true"></div>
+                  <div class="mailbox-sheen" aria-hidden="true"></div>
+                  <div class="mailbox-head">
+                    <div class="flex items-center gap-3">
+                      <span class="mailbox-brandmark"><img src="./images/popo-ip/popo.png" alt="popo" /></span>
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                          <h2 class="text-[18px] font-semibold leading-6 text-[#0A0F02]">泡泡动态</h2>
+                        </div>
+                        <p id="mailboxSubtitle" class="mt-0.5 text-[11px] text-[#656664]">5 个新动静正在靠近你的主页</p>
+                      </div>
+                      <button id="markReadBtn" type="button" class="mark-read rounded-full px-3 py-1.5 text-[11px] transition"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m2 6.2 2.2 2.2L9.8 3" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>全部已读</button>
+                    </div>
+                    <div class="mailbox-mode" role="tablist" aria-label="泡泡动态视图">
+                      <button type="button" class="is-active" data-mail-view="messages" role="tab" aria-selected="true">消息<span id="tabUnread" class="tab-new">5</span></button>
+                      <button type="button" data-mail-view="weekly" role="tab" aria-selected="false">每周冒泡 <span aria-hidden="true">↗</span></button>
+                    </div>
+                  </div>
+
+                  <div id="messagesView" class="mailbox-view is-active" data-view-panel="messages" role="tabpanel">
+                    <div class="mailbox-filters" role="group" aria-label="消息分类">
+                      <button type="button" class="mail-filter is-active" data-mail-filter="all" aria-pressed="true">全部 <b>5</b></button>
+                      <button type="button" class="mail-filter" data-mail-filter="cheer" aria-pressed="false">打气 <b>2</b></button>
+                      <button type="button" class="mail-filter" data-mail-filter="comment" aria-pressed="false">评论 <b>1</b></button>
+                      <button type="button" class="mail-filter" data-mail-filter="badge" aria-pressed="false">徽章 <b>1</b></button>
+                      <button type="button" class="mail-filter" data-mail-filter="notification" aria-pressed="false">通知 <b>1</b></button>
+                    </div>
+                    <div class="mail-list" id="mailList">
+                      <div class="mail-day"><img src="./images/popo-ip/momo.png" alt="" class="mail-day-ip" />momo 帮你接住了</div>
+                      <article class="mail-item badge-notice" data-message data-type="badge" tabindex="0">
+                        <span class="mail-new-dot" aria-label="未读"></span>
+                        <div class="badge-notice-art"><img src="./badges/b15.png" alt="首赞者徽章" /></div>
+                        <div class="min-w-0 flex-1 pr-2">
+                          <div class="flex items-start justify-between gap-2">
+                            <div>
+                              <div id="badgeNoticeTitle" class="text-[13px] font-semibold leading-5 text-[#0A0F02]">「首赞者」等你点亮</div>
+                              <p id="badgeNoticeText" class="mt-0.5 text-[11px] leading-[17px] text-[#656664]">你成为《极光故事板》的第一位打气者，已满足徽章条件。</p>
+                            </div>
+                            <button id="unlockBadgeBtn" type="button" class="unlock-btn">点亮</button>
+                          </div>
+                          <div class="mt-2 flex items-center gap-2 text-[10px] text-[#90918E]"><span id="badgeNoticeTier" class="rounded-full bg-white/70 px-2 py-0.5 text-[#B8842A]">基础徽章</span><span>刚刚</span><a id="badgeCabinetLink" href="./cabinet.html?sheet=15" class="ml-auto text-[#629915] hover:underline">去荣誉藏馆 →</a></div>
+                        </div>
+                      </article>
+
+                      <article class="mail-item" data-message data-type="comment" tabindex="0">
+                        <span class="mail-new-dot" aria-label="未读"></span>
+                        <span class="sender-avatar bg-[#7CF0AF]">W<span class="action-glyph" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.2 2.7h7.6v5.2H5.3L2.6 9.6V7.9h-.4V2.7Z" stroke="#0A0F02" stroke-width="1.1" stroke-linejoin="round"/></svg></span></span>
+                        <div class="min-w-0 flex-1 pr-3">
+                          <p class="text-[12px] leading-[18px] text-[#3E403C]"><b class="font-semibold text-[#0A0F02]">wangwu</b> 评论了你的《团队周报可视化面板》</p>
+                          <div class="comment-quote">这个筛选交互太顺了，模板能分享一份吗？</div>
+                          <div class="mt-2 text-[10px] text-[#90918E]">2 分钟前 · 回复</div>
+                        </div>
+                      </article>
+
+                      <div class="mail-day">今天</div>
+                      <article class="mail-item" data-message data-type="cheer" tabindex="0">
+                        <span class="mail-new-dot" aria-label="未读"></span>
+                        <span class="sender-avatar bg-[#FF7979]">L<span class="action-glyph" aria-hidden="true"><img src="./images/bubble-like.svg" alt="" class="h-[11px] w-[11px]" /></span></span>
+                        <div class="min-w-0 flex-1 pr-3">
+                          <p class="text-[12px] leading-[18px] text-[#3E403C]"><b class="font-semibold text-[#0A0F02]">lisi</b> 给你的《团队周报可视化面板》打了气</p>
+                          <div class="mt-2 flex items-center gap-2 text-[10px] text-[#90918E]"><span>上午 10:24</span><span>·</span><span class="text-[#629915]">作品已累计 42 次打气</span></div>
+                        </div>
+                      </article>
+
+                      <article class="mail-item" data-message data-type="cheer" tabindex="0">
+                        <span class="mail-new-dot" aria-label="未读"></span>
+                        <span class="sender-avatar bg-[#7AA2FF]">S<span class="action-glyph" aria-hidden="true"><img src="./images/bubble-like.svg" alt="" class="h-[11px] w-[11px]" /></span></span>
+                        <div class="min-w-0 flex-1 pr-3">
+                          <p class="text-[12px] leading-[18px] text-[#3E403C]"><b class="font-semibold text-[#0A0F02]">sunqi</b> 给你的《季度 OKR 追踪器》打了气</p>
+                          <div class="mt-2 text-[10px] text-[#90918E]">上午 09:08</div>
+                        </div>
+                      </article>
+
+                      <article class="mail-item" data-message data-type="notification" tabindex="0" aria-label="popo 通知：每周冒泡已更新">
+                        <span class="mail-new-dot" aria-label="未读"></span>
+                        <span class="sender-avatar bg-[#DAFCA9]" aria-hidden="true"><img src="./images/popo-ip/popo.png" alt="" class="h-7 w-7 object-contain" /></span>
+                        <div class="min-w-0 flex-1 pr-3">
+                          <div class="flex items-center gap-2"><b class="text-[12px] font-semibold text-[#0A0F02]">popo 通知</b><span class="rounded-full bg-[#EEF4E8] px-1.5 py-0.5 text-[9px] text-[#7C8276]">示例通知</span></div>
+                          <p class="mt-1 text-[12px] font-medium leading-[18px] text-[#3E403C]">「每周冒泡」已更新</p>
+                          <p class="mt-1 text-[11px] leading-[17px] text-[#656664]">这一周收到的回应、主页来访和新点亮的徽章，都帮你记下了。</p>
+                          <div class="mt-2 flex items-center justify-between gap-2 text-[10px] text-[#90918E]"><span>上午 08:30</span><button id="notificationDataBtn" type="button" class="font-medium text-[#629915] hover:underline">查看每周冒泡 →</button></div>
+                        </div>
+                      </article>
+                    </div>
+                    <div class="mailbox-foot">
+                      <span class="text-[10px] leading-4 text-[#90918E]">悬停消息可快速查看，点击后会标记已读</span>
+                      <button id="allMessagesBtn" type="button" class="whitespace-nowrap text-[11px] font-medium text-[#629915] transition hover:text-[#0A0F02]">查看全部消息 →</button>
+                    </div>
+                  </div>
+
+                  <div id="weeklyView" class="mailbox-view" data-view-panel="weekly" role="tabpanel">
+                    <div class="weekly-scroll">
+                      <section id="personalReport" class="personal-report" aria-label="每周冒泡">正在整理你的每周冒泡…</section>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </header>
+      <main class="relative z-10 mx-auto -mt-2 w-full max-w-360 px-2 pb-20 sm:px-6 sm:pb-24">
+        <div class="mx-auto flex min-h-[116px] max-w-[736px] flex-col items-center opacity-100">
+          <h1 class="text-center text-3xl font-semibold tracking-tight">每个作品都值得冒泡</h1>
+          <div class="relative w-full pt-8 transition hover:scale-[1.008] active:scale-[0.992] sm:pt-[38px]">
+            <img src="./images/search-left-ip.png" alt="" aria-hidden class="pointer-events-none absolute left-4 top-0 z-0 h-[62px] w-auto select-none sm:left-6 sm:h-[75px]" />
+            <img src="./images/search-right-ip.png" alt="" aria-hidden class="pointer-events-none absolute right-3 top-0 z-0 h-[62px] w-auto select-none sm:right-6 sm:h-[75px]" />
+            <div class="relative z-10 flex h-[46px] cursor-text items-center rounded-[17px] border border-white/80 bg-white px-4 shadow-[0px_10px_20px_0px_rgba(50,82,5,0.12),0px_4px_14px_0px_rgba(50,82,5,0.06)] transition sm:h-[52px] sm:rounded-[19px] sm:px-5">
+              <svg class="mr-4 shrink-0 text-zinc-950" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="search" placeholder="今天想搜点什么?" aria-label="检索作品" class="w-full bg-transparent text-base font-medium text-zinc-950 outline-none placeholder:text-zinc-400 sm:text-xl" />
+            </div>
+          </div>
+        </div>
+        <div class="home-works-panel rounded-[28px] px-0 py-7 sm:rounded-[40px] sm:px-6 sm:py-8">
+          <div id="tabs" role="tablist" aria-label="作品分类" class="flex flex-wrap items-center justify-center gap-[6.4px] sm:gap-[9.6px]"></div>
+          <section class="mt-5">
+            <div id="works" class="[column-gap:22px] columns-2 sm:[column-gap:22px] sm:columns-3 lg:columns-4"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+    <button id="demoOpenBtn" type="button" class="demo-peek" aria-label="打开右上角头像的泡泡动态"><i aria-hidden="true"></i><span>Hover 右上角头像 · 打开泡泡动态</span></button>
+    <div id="postModal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/40 max-sm:p-4">
+      <div class="relative p-6">
+        <div class="get-my-popo-dialog relative isolate h-[574px] w-[1002px] rounded-2xl bg-cover" style="background-image:url(./images/popover-bg.png)">
+          <div class="relative z-10">
+            <p class="pt-16 text-center text-[28px] font-semibold text-black">如何在 popo 发布作品？</p>
+            <div class="mt-5 flex gap-6 px-10">
+              <div class="relative flex-1">
+                <div class="flex h-[82px] items-center gap-2 rounded-xl pl-4">
+                  <img src="./images/dodo-icon.png" alt="" class="h-8 w-auto" />
+                  <span class="text-[18px] font-medium text-black">在 dodo 发布</span>
+                </div>
+                <div class="rounded-2xl p-6">
+                  <div class="mb-[26px]">
+                    <div class="flex items-center gap-2"><span class="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(10,15,2,1)] text-[14px] font-medium leading-none text-[rgba(184,237,110,1)]">1</span><span class="text-[16px] font-medium text-[rgba(10,15,2,1)]">使用 dodo 生成页面</span></div>
+                    <div class="mt-[10px] text-[14px] leading-[19.6px] text-[rgba(62,64,60,1)]">打开 dodo Web 端 <a class="font-medium text-[rgba(98,153,21,1)] underline">dodo.baidu-int.com</a>，描述你想做的内容并让它生成 HTML，说得越具体效果越好。</div>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2"><span class="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(10,15,2,1)] text-[14px] font-medium leading-none text-[rgba(184,237,110,1)]">2</span><span class="text-[16px] font-medium text-[rgba(10,15,2,1)]">发布到 popo</span></div>
+                    <div class="mt-[10px] text-[14px] leading-[19.6px] text-[rgba(62,64,60,1)]">点预览页右上角「发布到 popo」，几秒钟拿到专属链接，可分享给任何人，也可私密发布。</div>
+                  </div>
+                </div>
+              </div>
+              <div class="relative flex-1">
+                <div class="flex h-[82px] items-center gap-2 rounded-xl pl-4">
+                  <img src="./images/comate-icon.png" alt="" class="h-8 w-auto" />
+                  <span class="text-[18px] font-medium text-black">在 Comate 发布</span>
+                </div>
+                <div class="rounded-2xl p-6">
+                  <div class="mb-[26px]">
+                    <div class="flex items-center gap-2"><span class="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(10,15,2,1)] text-[14px] font-medium leading-none text-[rgba(184,237,110,1)]">1</span><span class="text-[16px] font-medium text-[rgba(10,15,2,1)]">下载 Comate 生成页面</span></div>
+                    <div class="mt-[10px] text-[14px] leading-[19.6px] text-[rgba(62,64,60,1)]">前往 <a class="font-medium text-[rgba(98,153,21,1)] underline">comate.baidu.com</a> 下载安装，打开窗口让它帮你生成页面。</div>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2"><span class="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(10,15,2,1)] text-[14px] font-medium leading-none text-[rgba(184,237,110,1)]">2</span><span class="text-[16px] font-medium text-[rgba(10,15,2,1)]">一键部署到 popo</span></div>
+                    <div class="mt-[10px] text-[14px] leading-[19.6px] text-[rgba(62,64,60,1)]">对话里说句「发布」或敲 /popo，一行命令拿到专属链接。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-15 flex items-center justify-center gap-1 px-10 text-[14px]">想用其他工具发布作品？安装专属 skill <a class="font-medium text-[rgba(98,153,21,1)] underline">点我去下载</a>，即可轻松发布！</div>
+          </div>
+        </div>
+        <button id="postClose" type="button" class="absolute right-0 top-16 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(10,15,2,1)] text-white hover:opacity-80">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1L9 9M9 1L1 9" stroke="white" stroke-width="1.5" stroke-linecap="round" /></svg>
+        </button>
+      </div>
+    </div>
+    <div id="toast" class="fixed left-1/2 top-6 z-[9999] hidden -translate-x-1/2 rounded-lg bg-zinc-800 px-4 py-2 text-sm text-white shadow-lg"></div>
+    <script>
+      const $ = (s, r = document) => r.querySelector(s);
+      const toast = (msg) => {
+        const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden');
+        clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), 2000);
+      };
+      // 分类 tab（复刻 CategoryTabs）
+      const tabs = [
+        { key: 'trending', label: '正在冒泡', variant: 'trending' },
+        { key: 'hackathon', label: 'HACKATHON', variant: 'hackathon' },
+        { key: 'dashboard', label: '数据看板', variant: 'normal' },
+        { key: 'proto', label: '交互原型', variant: 'normal' },
+        { key: 'tool', label: '工具', variant: 'normal' },
+      ];
+      let activeTab = 'trending';
+      const base = 'flex h-[28.8px] items-center justify-center rounded-full px-4 text-[12.8px] font-normal shadow-none transition duration-200 ease-out hover:scale-[1.035] active:scale-95 sm:h-8 sm:px-[19.2px] sm:text-[14.4px]';
+      const gradient = 'bg-[linear-gradient(149deg,rgba(124,240,175,1)_1.71%,rgba(10,15,2,1)_18.76%,rgba(10,15,2,1)_81.32%,rgba(179,237,109,1)_96.56%)] text-white shadow-[0px_6px_14px_0px_rgba(50,82,5,0.16)]';
+      const solid = 'bg-zinc-900 text-white shadow-[0px_6px_14px_0px_rgba(10,15,2,0.14)] hover:bg-zinc-800';
+      const outline = 'border-2 border-zinc-200 bg-transparent text-zinc-950 hover:border-zinc-300';
+      function renderTabs() {
+        $('#tabs').innerHTML = tabs.map((t) => {
+          const on = t.key === activeTab;
+          if (t.variant === 'hackathon') {
+            return `<button data-tab="${t.key}" class="group relative flex h-[28.8px] aspect-[185/36] items-center justify-center rounded-full transition duration-200 ease-out hover:scale-[1.035] active:scale-95 sm:h-8"><img src="./images/hackathon-label.png" alt="HACKATHON" class="absolute inset-0 h-full w-full ${on ? 'opacity-100' : 'opacity-100'}" /></button>`;
+          }
+          const cls = t.variant === 'trending' && on ? gradient : on ? solid : outline;
+          return `<button data-tab="${t.key}" class="${base} ${cls}">${t.label}</button>`;
+        }).join('');
+        $('#tabs').querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => { activeTab = b.getAttribute('data-tab'); renderTabs(); toast('切换到「' + tabs.find((t) => t.key === activeTab).label + '」'); }));
+      }
+      // 作品（复刻 home/WorkCard）
+      const palette = ['#7CF0AF', '#B3ED6D', '#F5EB66', '#FF7979', '#7AA2FF', '#C792EA', '#FFB86C', '#4EC8B0'];
+      const pick = (s) => { let h = 0; for (const c of s) h = ((h << 5) - h + c.charCodeAt(0)) | 0; return palette[Math.abs(h) % palette.length]; };
+      const works = [
+        { id: '1', title: '团队周报可视化面板', owner: 'dongkexin01', likes: 42, liked: false, ratio: 1.58, hack: false },
+        { id: '2', title: '新人 onboarding 交互指南', owner: 'wangwu', likes: 128, liked: true, ratio: 0.9, hack: true },
+        { id: '3', title: '季度 OKR 追踪器', owner: 'lisi', likes: 8, liked: false, ratio: 1.18, hack: false },
+        { id: '4', title: '活动落地页', owner: 'zhaoliu', likes: 231, liked: false, ratio: 1.42, hack: false },
+        { id: '5', title: '组件库速查手册', owner: 'sunqi', likes: 15, liked: false, ratio: 0.82, hack: false },
+        { id: '6', title: '数据大屏 Demo', owner: 'zhouba', likes: 1200, liked: true, ratio: 1.34, hack: true },
+        { id: '7', title: '问卷收集小工具', owner: 'dongkexin01', likes: 3, liked: false, ratio: 1.08, hack: false },
+        { id: '8', title: '周边商城原型', owner: 'wangwu', likes: 56, liked: false, ratio: 1.42, hack: false },
+      ];
+      const fmt = (n) => (n >= 1000 ? (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k' : String(n));
+      const bubbleLike = (liked) => `<svg width="16" height="17" viewBox="0 0 16 17" fill="none"><path d="M9.35766 15.477C12.3746 15.477 14.8203 13.0313 14.8203 10.0144C14.8203 6.99746 12.3746 4.55176 9.35766 4.55176C6.34072 4.55176 3.89502 6.99746 3.89502 10.0144C3.89502 13.0313 6.34072 15.477 9.35766 15.477Z" ${liked ? 'fill="#DAFCA9" stroke="#0A0F02"' : 'stroke="#90918E"'} stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.4875 7.08984C10.932 7.14541 11.8209 7.42318 12.1542 8.75651" stroke="${liked ? '#0A0F02' : '#90918E'}" stroke-width="1.2" stroke-linecap="round"/><path d="M3.98614 4.734C5.04207 4.734 5.89806 3.878 5.89806 2.82208C5.89806 1.76615 5.04207 0.910156 3.98614 0.910156C2.93022 0.910156 2.07422 1.76615 2.07422 2.82208C2.07422 3.878 2.93022 4.734 3.98614 4.734Z" ${liked ? 'fill="#DAFCA9" stroke="#0A0F02"' : 'stroke="#90918E"'} stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      const shareIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.33317 13.6122C2.9642 11.6212 4.4126 10.4915 5.67837 10.2229C6.94414 9.95433 8.14927 9.91376 9.29377 10.1012V13.6668L14.6665 7.8486L9.29377 2.3335V5.7225C7.1776 5.73923 5.37857 6.49843 3.89667 8.00016C2.41474 9.5019 1.56027 11.3726 1.33317 13.6122Z" fill="none" stroke="#90918E" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+      function renderWorks() {
+        $('#works').innerHTML = works.map((w) => `
+        <div class="mb-[22px] break-inside-avoid">
+          <article class="group relative w-full overflow-hidden rounded-[22px] border-[3.6px] border-zinc-100 bg-white transition duration-300 ease-out hover:scale-[1.008] hover:border-zinc-300 hover:shadow-[0px_12px_28px_rgba(10,15,2,0.1)] active:scale-[0.992]">
+            ${w.hack ? '<span class="absolute right-[11px] top-[11px] z-10 rounded-full bg-zinc-950 px-[9px] py-[3.5px] text-[10px] font-semibold tracking-wide text-[#B3ED6D]">HACKATHON</span>' : ''}
+            <div class="p-[14px]">
+              <div class="relative w-full overflow-hidden rounded-[14px] bg-zinc-100" style="aspect-ratio:${w.ratio}">
+                <div class="flex h-full w-full items-center justify-center px-[14px] text-center text-[13px] font-medium text-zinc-400">${w.title}</div>
+              </div>
+              <p class="mt-[12px] truncate text-[16px] font-medium leading-[22.4px] text-[rgba(10,15,2,1)]">${w.title}</p>
+              <div class="mt-[6px] flex items-center justify-between">
+                <div class="flex min-w-0 items-center gap-[7px]">
+                  <span class="flex h-[22px] w-[22px] shrink-0 select-none items-center justify-center rounded-full text-[10px] font-semibold text-zinc-950" style="background:${pick(w.owner)}">${w.owner[0].toUpperCase()}</span>
+                  <span class="truncate text-[12px] font-medium text-zinc-950">${w.owner}</span>
+                </div>
+                <div class="flex shrink-0 items-center -space-x-[5px]">
+                  <button class="relative inline-flex shrink-0 items-center rounded-full px-[7px] py-[5px] text-[12px] text-zinc-950 active:scale-95">${shareIcon}</button>
+                  <button data-like="${w.id}" class="relative -mr-[7px] inline-flex items-center gap-[3.5px] rounded-full py-[5px] pl-1 text-[12px] text-zinc-950 active:scale-95">
+                    <span class="inline-flex h-[15px] w-[14px] shrink-0 items-center justify-center">${bubbleLike(w.liked)}</span>
+                    <span class="min-w-[2ch] text-left tabular-nums">${fmt(w.likes)}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>`).join('');
+        $('#works').querySelectorAll('[data-like]').forEach((b) => (b.onclick = () => {
+          const w = works.find((x) => x.id === b.getAttribute('data-like'));
+          w.liked = !w.liked; w.likes += w.liked ? 1 : -1; renderWorks();
+        }));
+      }
+      renderTabs();
+      renderWorks();
+
+      // 头像 hover：带关闭缓冲与透明桥，保证从头像移到浮层时稳定。
+      const mailboxRoot = $('#mailboxRoot');
+      const avatarTrigger = $('#avatarTrigger');
+      const mailboxCard = $('.mailbox-card');
+      let mailboxCloseTimer = null;
+      let unreadCount = document.querySelectorAll('[data-message]:not(.is-read)').length;
+      const setMailboxOpen = (open) => {
+        clearTimeout(mailboxCloseTimer);
+        mailboxRoot.classList.toggle('is-open', open);
+        avatarTrigger.setAttribute('aria-expanded', String(open));
+      };
+      mailboxRoot.addEventListener('pointerenter', () => setMailboxOpen(true));
+      mailboxRoot.addEventListener('pointerleave', () => {
+        clearTimeout(mailboxCloseTimer);
+        mailboxCloseTimer = setTimeout(() => setMailboxOpen(false), 220);
+      });
+      avatarTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setMailboxOpen(!mailboxRoot.classList.contains('is-open'));
+      });
+      avatarTrigger.addEventListener('focus', () => setMailboxOpen(true));
+      $('#demoOpenBtn').onclick = () => { setMailboxOpen(true); avatarTrigger.focus(); };
+      document.addEventListener('pointerdown', (e) => {
+        if (!mailboxRoot.contains(e.target)) setMailboxOpen(false);
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { setMailboxOpen(false); avatarTrigger.focus(); }
+      });
+      mailboxCard.addEventListener('pointermove', (event) => {
+        const bounds = mailboxCard.getBoundingClientRect();
+        mailboxCard.style.setProperty('--gx', `${event.clientX - bounds.left}px`);
+        mailboxCard.style.setProperty('--gy', `${event.clientY - bounds.top}px`);
+      });
+      mailboxCard.addEventListener('pointerleave', () => {
+        mailboxCard.style.setProperty('--gx', '82%');
+        mailboxCard.style.setProperty('--gy', '5%');
+      });
+
+      // 消息 / 每周冒泡切换。
+      const viewButtons = [...document.querySelectorAll('[data-mail-view]')];
+      const viewPanels = [...document.querySelectorAll('[data-view-panel]')];
+      function setMailView(view) {
+        viewButtons.forEach((b) => {
+          const active = b.dataset.mailView === view;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-selected', String(active));
+        });
+        viewPanels.forEach((p) => p.classList.toggle('is-active', p.dataset.viewPanel === view));
+        $('#markReadBtn').classList.toggle('invisible', view !== 'messages');
+        $('#mailboxSubtitle').textContent = view === 'messages'
+          ? (unreadCount ? `${unreadCount} 个新动静正在靠近你的主页` : '今天的新动静都看过啦')
+          : '这一周的回应、来访与小成就';
+      }
+      viewButtons.forEach((b) => (b.onclick = () => setMailView(b.dataset.mailView)));
+
+      // 消息筛选。
+      const filterButtons = [...document.querySelectorAll('[data-mail-filter]')];
+      const mailItems = [...document.querySelectorAll('[data-message]')];
+      filterButtons.forEach((b) => (b.onclick = () => {
+        const type = b.dataset.mailFilter;
+        filterButtons.forEach((x) => {
+          x.classList.toggle('is-active', x === b);
+          x.setAttribute('aria-pressed', String(x === b));
+        });
+        mailItems.forEach((item) => item.classList.toggle('is-hidden', type !== 'all' && item.dataset.type !== type));
+        document.querySelectorAll('.mail-day').forEach((day) => day.classList.toggle('hidden', type !== 'all'));
+      }));
+
+      function updateUnread() {
+        const unreadItems = mailItems.filter((item) => !item.classList.contains('is-read'));
+        unreadCount = unreadItems.length;
+        filterButtons.forEach((button) => {
+          const type = button.dataset.mailFilter;
+          button.querySelector('b').textContent = type === 'all'
+            ? unreadCount
+            : unreadItems.filter((item) => item.dataset.type === type).length;
+        });
+        $('#avatarUnread').textContent = unreadCount;
+        $('#avatarUnread').classList.toggle('is-zero', unreadCount === 0);
+        $('#tabUnread').textContent = unreadCount;
+        $('#tabUnread').classList.toggle('hidden', unreadCount === 0);
+        avatarTrigger.setAttribute('aria-label', unreadCount ? `打开泡泡动态，${unreadCount} 条未读` : '打开泡泡动态，没有未读消息');
+        if ($('#messagesView').classList.contains('is-active')) {
+          $('#mailboxSubtitle').textContent = unreadCount ? `${unreadCount} 个新动静正在靠近你的主页` : '今天的新动静都看过啦';
+        }
+      }
+      function readMessage(item) {
+        if (item.classList.contains('is-read')) return;
+        item.classList.add('is-read');
+        updateUnread();
+      }
+      mailItems.forEach((item) => {
+        item.addEventListener('click', () => readMessage(item));
+        item.addEventListener('keydown', (e) => {
+          if (e.target !== item) return;
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); readMessage(item); }
+        });
+      });
+      $('#markReadBtn').onclick = () => {
+        mailItems.forEach((item) => item.classList.add('is-read'));
+        updateUnread();
+        toast('所有动静都看过啦');
+      };
+      $('#notificationDataBtn').onclick = (e) => {
+        e.stopPropagation();
+        readMessage(e.currentTarget.closest('[data-message]'));
+        setMailView('weekly');
+      };
+      updateUnread();
+
+      // 从消息直接点亮徽章，并写入徽章陈列柜使用的同一份本地状态。
+      $('#unlockBadgeBtn').onclick = (e) => {
+        e.stopPropagation();
+        const notice = e.target.closest('.badge-notice');
+        notice.classList.add('is-unlocked');
+        readMessage(notice);
+        e.target.disabled = true;
+        e.target.textContent = '已点亮';
+        $('#badgeNoticeTitle').textContent = '「首赞者」已收入荣誉藏馆';
+        $('#badgeNoticeText').textContent = '这枚徽章已经亮起来了，也会同步出现在你的徽章系统里。';
+        $('#badgeNoticeTier').style.color = '#629915';
+        try {
+          const key = 'popo.badge.unlocked.v4';
+          const stored = JSON.parse(localStorage.getItem(key) || '[]');
+          if (!stored.includes(15)) stored.push(15);
+          localStorage.setItem(key, JSON.stringify(stored));
+        } catch (err) {}
+        toast('「首赞者」已点亮，收入荣誉藏馆');
+      };
+      $('#allMessagesBtn').onclick = () => toast('完整消息中心将在下一阶段接入');
+
+      // 评审快捷参数：?open=1；?view=weekly；?view=badge；?view=notification。
+      const mailboxQuery = new URLSearchParams(location.search);
+      if (mailboxQuery.get('open') === '1' || mailboxQuery.has('view')) setMailboxOpen(true);
+      if (mailboxQuery.get('view') === 'weekly') setMailView('weekly');
+      if (mailboxQuery.get('view') === 'badge') {
+        setMailView('messages');
+        document.querySelector('[data-mail-filter="badge"]').click();
+      }
+      if (mailboxQuery.get('view') === 'notification') {
+        setMailView('messages');
+        document.querySelector('[data-mail-filter="notification"]').click();
+      }
+      const exportView = mailboxQuery.get('export');
+      if (exportView === 'messages' || exportView === 'weekly') {
+        document.body.classList.add('export-mode');
+        setMailboxOpen(true);
+        setMailView(exportView);
+        document.querySelector(`[data-view-panel="${exportView}"]`).classList.add('export-active');
+      }
+
+      // 发个泡泡弹窗
+      const pm = $('#postModal');
+      const showPm = (on) => pm.classList.toggle('hidden', !on) || pm.classList.toggle('flex', on);
+      $('#postBtn').onclick = () => showPm(true);
+      $('#postClose').onclick = () => showPm(false);
+      pm.onmousedown = (e) => { if (e.target === pm) showPm(false); };
+      if (location.hash === '#post') showPm(true);
+    </script>
+    <script src="./personal-report.js"></script>
+  </body>
+</html>

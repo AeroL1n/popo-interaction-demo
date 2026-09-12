@@ -1,0 +1,289 @@
+/* POPO Demo：紧凑的字号层级，字体沿用原有配置。 */
+
+/* 头像 Hover 浮窗：保持浮窗尺寸，收紧标题和导航的视觉占比。 */
+.mailbox-head {
+  padding: 15px 18px 0;
+}
+
+.mailbox-head > .flex {
+  min-height: 43px;
+}
+
+.mailbox-head h2 {
+  font-size: 20px !important;
+  line-height: 1.3 !important;
+  letter-spacing: 0;
+}
+
+#mailboxSubtitle {
+  margin-top: 4px !important;
+  font-size: 12px !important;
+  line-height: 18px;
+  letter-spacing: .015em;
+}
+
+.mark-read {
+  min-height: 30px;
+  padding: 0 11px !important;
+  font-size: 12px !important;
+  letter-spacing: .02em;
+}
+
+.mailbox-mode {
+  gap: 24px;
+  margin-top: 11px;
+}
+
+.mailbox-mode button {
+  height: 42px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: .015em;
+}
+
+.mailbox-mode .tab-new {
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  font-size: 11px;
+}
+
+.mailbox-mode button.is-active::after {
+  height: 2px;
+  border-radius: 99px 99px 0 0;
+}
+
+.mailbox-filters {
+  gap: 4px;
+  padding: 9px 12px;
+}
+
+.mail-filter {
+  display: inline-flex;
+  height: 32px;
+  min-width: 0;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: .02em;
+}
+
+.mail-filter b {
+  font-size: 12px;
+}
+
+.mail-list {
+  padding: 5px 14px 10px;
+}
+
+.mail-day {
+  padding: 10px 8px 7px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.mail-item {
+  gap: 11px;
+  padding: 14px 11px;
+}
+
+.mail-item p,
+.mail-item p[class*="text-[11px]"],
+.mail-item p[class*="text-[12px]"] {
+  font-size: 14px !important;
+  line-height: 21px !important;
+}
+
+#badgeNoticeTitle {
+  font-size: 15px !important;
+  line-height: 21px !important;
+  letter-spacing: .01em;
+}
+
+#badgeNoticeText {
+  margin-top: 3px !important;
+  font-size: 13px !important;
+  line-height: 20px !important;
+}
+
+.comment-quote {
+  margin-top: 8px;
+  padding: 8px 11px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.mail-item [class*="text-[9px]"],
+.mail-item [class*="text-[10px]"] {
+  font-size: 12px !important;
+  line-height: 17px;
+}
+
+.mail-item [class*="text-[11px]"] {
+  font-size: 13px !important;
+}
+
+.sender-avatar {
+  width: 38px;
+  height: 38px;
+  font-size: 16px;
+}
+
+.unlock-btn {
+  min-width: 52px;
+  height: 33px;
+  padding-inline: 13px;
+  font-size: 13px;
+}
+
+.mailbox-foot {
+  padding: 10px 17px 12px;
+}
+
+.mailbox-foot [class*="text-[10px]"],
+.mailbox-foot [class*="text-[11px]"] {
+  font-size: 12px !important;
+  line-height: 18px;
+}
+
+/* 周报沿用原字体，并给数据留足呼吸空间。 */
+.weekly-scroll {
+  padding: 13px;
+}
+
+.echo-cockpit {
+  min-height: 232px;
+}
+
+.echo-cockpit > .relative {
+  padding: 37px 18px 28px;
+}
+
+.echo-cockpit > .relative > div:first-child {
+  font-size: 11px !important;
+  letter-spacing: .1em !important;
+}
+
+.echo-cockpit h3 {
+  max-width: calc(100% - 92px);
+  margin-top: 10px;
+  font-size: 23px;
+  line-height: 31px;
+  letter-spacing: .02em;
+}
+
+.echo-cockpit p {
+  max-width: calc(100% - 92px);
+  margin-top: 5px !important;
+  font-size: 13px;
+  line-height: 21px;
+}
+
+.echo-cockpit > .relative > div:last-child {
+  margin-top: 9px !important;
+  font-size: 12px !important;
+  line-height: 18px;
+}
+
+.echo-ip {
+  height: 27px;
+  padding-inline: 9px;
+}
+
+.echo-ip span {
+  font-size: 10px;
+}
+
+.echo-score {
+  right: 18px;
+  top: 87px;
+  width: 70px;
+  height: 70px;
+}
+
+.echo-score b {
+  font-size: 27px;
+}
+
+.echo-score small {
+  margin-top: 4px;
+  font-size: 9px;
+  letter-spacing: .06em;
+}
+
+.echo-stat-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.echo-stat {
+  min-height: 76px;
+  padding: 12px 11px 9px;
+}
+
+.echo-stat b {
+  margin-top: 5px;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.echo-stat span {
+  margin-top: 7px;
+  font-size: 13px;
+}
+
+.echo-stat em {
+  font-size: 11px;
+}
+
+.work-pulse {
+  padding: 14px;
+}
+
+.work-pulse h3 {
+  font-size: 17px !important;
+  line-height: 22px;
+}
+
+.work-pulse p {
+  font-size: 12px !important;
+  line-height: 18px;
+}
+
+.work-pulse span[class*="text-[9px]"],
+.work-pulse span[class*="text-[10px]"],
+.pulse-row [class*="text-[10px]"],
+.pulse-row [class*="text-[11px]"] {
+  font-size: 12px !important;
+}
+
+.pulse-row [class*="text-[11px]"] {
+  font-size: 14px !important;
+}
+
+.data-note {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+#fullDataBtn {
+  height: 42px;
+  font-size: 14px !important;
+}
+
+@media (max-width: 380px) {
+  .mailbox-head { padding-inline: 13px }
+  .mailbox-head > .flex { gap: 8px }
+  .mailbox-brandmark { width: 34px; height: 34px }
+  .mailbox-head h2 { font-size: 19px !important }
+  #mailboxSubtitle { font-size: 12px !important }
+  .mark-read { padding-inline: 8px !important; font-size: 12px !important }
+  .mailbox-mode button { font-size: 14px }
+  .mail-filter { padding-inline: 5px; font-size: 13px }
+  .mail-filter b { font-size: 12px }
+}

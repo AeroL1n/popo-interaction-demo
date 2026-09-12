@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>每周冒泡 · 默认态（1:1 还原）</title>
+<style>
+/* 1:1 静态还原 默认态.svg。字体统一 PingFang SC；字号/字重据 SVG 推导。 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #eef0ed; }
+body {
+  min-height: 100vh; display: grid; place-items: start center; padding: 28px 16px 60px;
+  font-family: "PingFang SC", "PingFang HK", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision;
+}
+body.embed-mode {
+  min-height: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  padding: 0;
+  background: transparent;
+  place-items: start;
+}
+body.embed-mode .card {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+body.embed-mode .card::-webkit-scrollbar { width: 0; height: 0; }
+.card {
+  position: relative; width: 432px; background: #fff; border-radius: 24px;
+  padding: 24px 16px 20px;
+  box-shadow: 0 18px 50px -18px rgba(20,30,10,.18), 0 2px 8px rgba(20,30,10,.05);
+}
+/* 右侧滚动指示条 */
+.scroll { position: absolute; right: 4px; top: 113px; z-index: 8; width: 4px; height: 168px; border-radius: 2px; background: #E8E8E8; pointer-events: none; will-change: top, height; }
+/* 头部 */
+.hd { display: flex; align-items: baseline; gap: 8px; }
+.hd h1 { font-size: 16px; font-weight: 600; color: #0A0F02; letter-spacing: .01em; line-height: 1; }
+.hd .sub { font-size: 12px; font-weight: 400; color: #4E4F4C; letter-spacing: .01em; }
+/* Tabs */
+.tabs { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; gap: 24px; margin-top: 0; padding-bottom: 10px; }
+.tabs::after { display: none; }
+.tabs::before {
+  content: ""; position: absolute; left: var(--tab-left, 0px); bottom: 0;
+  width: var(--tab-width, 0px); height: 2px; background: #0A0F02;
+  border-radius: 2px; z-index: 2; pointer-events: none;
+}
+.tabs.is-ready::before {
+  transition: left .48s cubic-bezier(.2, 1.35, .3, 1), width .32s ease-out;
+}
+.tab {
+  position: relative; display: inline-flex; align-items: center; gap: 5px; height: 18px;
+  padding: 0; border: 0; background: transparent; color: #696A68; cursor: pointer;
+  font: 400 14px/18px "PingFang SC", "PingFang HK", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  white-space: nowrap; -webkit-tap-highlight-color: transparent;
+  transition: color .28s ease, transform .28s cubic-bezier(.2, 1.25, .3, 1);
+}
+.tab.msg { color: #696A68; font-weight: 400; }
+.tab.act { color: #0A0F02; font-weight: 500; }
+.tab:not(.act):hover { color: #30352C; transform: translateY(-1px); }
+.tab:focus-visible { outline: 2px solid rgba(10, 15, 2, .35); outline-offset: 4px; border-radius: 3px; }
+.tab.tab-enter { animation: tabEnter .46s cubic-bezier(.2, 1.35, .3, 1); }
+.tab.act .badge { animation: badgePop .46s cubic-bezier(.2, 1.35, .3, 1); }
+@keyframes tabEnter {
+  0% { transform: translateY(2px) scale(.96); opacity: .68; }
+  58% { transform: translateY(-1px) scale(1.015); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes badgePop {
+  0% { transform: scale(.84) rotate(-5deg); }
+  58% { transform: scale(1.08) rotate(2deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.tab .badge { display: block; width: 20px; height: 18px; flex: none; }
+/* 顶部 banner */
+.banner { position: relative; display: block; width: 402px; height: 80px; margin: 12px 0 0; background: url('./restore-assets/banner-background.svg') 0 0 / 402px 80px no-repeat; }
+.banner-title { position: absolute; left: 17px; top: 21px; font-family: 'PingFang SC', 'PingFang HK', -apple-system, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 16px; font-weight: 600; color: #0A0F02; white-space: nowrap; }
+.banner-meta { position: absolute; left: 17px; top: 47px; display: flex; align-items: baseline; gap: 10px; font-family: 'PingFang SC', 'PingFang HK', -apple-system, 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 12px; font-weight: 400; color: #696A68; white-space: nowrap; }
+/* 区块标题 */
+.sec { margin: 12px 0 9px; font-size: 14px; font-weight: 500; color: #0A0F02; line-height: 1; letter-spacing: .01em; }
+.metrics + .sec,
+.foot + .sec { margin-top: 23px; }
+/* 四张卡片 */
+.metrics { display: grid; grid-template-columns: 196px 196px; gap: 8px; }
+.metric { position: relative; width: 196px; height: 99px; border-radius: 12px; padding: 0; overflow: hidden; }
+.m-green { background: #F5FBEC url('./restore-assets/color-card-green.svg') 0 0 / 196px 99px no-repeat; }
+.m-pink  { --num-left: 94px; background: #FFF0F9 url('./restore-assets/color-card-pink.svg') 0 0 / 196px 99px no-repeat; }
+.m-blue  { background: #E6F5FE url('./restore-assets/color-card-blue.svg') 0 0 / 196px 99px no-repeat; }
+.m-yellow{ background: #FEFDE6 url('./restore-assets/color-card-yellow.svg') 0 0 / 196px 99px no-repeat; }
+.metric .t { position: absolute; left: 17px; top: 22px; z-index: 3; font-size: 14px; font-weight: 500; color: #0A0F02; line-height: 14px; }
+.metric .n { position: absolute; left: var(--num-left, 82px); top: 18px; z-index: 3; margin: 0; line-height: 18px; display: flex; align-items: baseline; }
+.metric .n b { font-size: 18px; font-weight: 600; color: #0A0F02; }
+.metric .n span { font-size: 12px; font-weight: 400; color: #4E4F4C; margin-left: 4px; }
+.metric .note { position: absolute; left: 17px; top: 47px; bottom: auto; z-index: 3; font-size: 12px; font-weight: 400; color: #696A68; line-height: 12px; }
+.metric .note em { font-style: normal; color: #A6D663; }
+.metric .ico { display: none; }
+/* 「收到打气」hover 动效：背景气泡 + 右下角 IP 角色（仅此卡） */
+.metric .bubbles { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.metric .bubbles .b { position: absolute; bottom: -18px; opacity: 0; will-change: transform, opacity; }
+.metric:hover .bubbles .b { animation: cardBubble var(--dur, 3.6s) linear infinite var(--delay, 0s); }
+@keyframes cardBubble {
+  0%   { transform: translate(0, 0) scale(.86); opacity: 0; }
+  14%  { opacity: .95; }
+  82%  { opacity: .9; }
+  100% { transform: translate(var(--dx, 6px), -122px) scale(1.06); opacity: 0; }
+}
+.metric .char { position: absolute; right: -12px; bottom: -7px; width: 72px; height: auto; z-index: 2; pointer-events: none;
+  transform: translate3d(16px, 36px, 0) scale(.55) rotate(10deg); opacity: 0; transform-origin: 70% 90%;
+  will-change: transform, opacity; backface-visibility: hidden; }
+.metric .char.in { animation: charEnter .64s cubic-bezier(.16,1,.3,1) forwards; }
+.metric .char.out { animation: charExit .28s cubic-bezier(.4,0,1,1) forwards; }
+@keyframes charExit {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+  100% { transform: translate3d(10px, 18px, 0) scale(.88); opacity: 0; }
+}
+/* 双手挥动（±14°），以角色 viewBox 内图二标记的圆点为旋转中心 */
+.m-green .char .hand-r, .m-green .char .hand-l { transform-box: view-box; will-change: transform; }
+.m-green .char .hand-r { transform-origin: 11px 37px; }
+.m-green .char .hand-l { transform-origin: 62px 48px; }
+.m-green:hover .char .hand-r { animation: waveR .9s ease-in-out infinite; }
+.m-green:hover .char .hand-l { animation: waveL .9s ease-in-out .1s infinite; }
+@keyframes waveR { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } }
+@keyframes waveL { 0%, 100% { transform: rotate(14deg); } 50% { transform: rotate(-14deg); } }
+@keyframes charEnter {
+  0%   { transform: translate3d(8px, 22px, 0) scale(.88); opacity: 0; }
+  62%  { transform: translate3d(-1px, -1px, 0) scale(1.015); opacity: 1; }
+  82%  { transform: translate3d(0, 1px, 0) scale(.998); }
+  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+}
+/* 粉色卡：望远镜上方的感叹号，角色完全入场后再弹出 */
+/* 粉色卡：角色整体左移一点露出右手；望远镜上方的感叹号 */
+.m-pink .char { right: -12px; bottom: -14px; width: 76px; }
+.m-blue .char { right: -12px; bottom: -10px; width: 70px; }
+.m-yellow .char { right: -8px; bottom: -5px; width: 70px; }
+.m-yellow .note { left: 10px; }
+.m-blue .bubbles { transform: translate(5px, 2px); }
+.metric .exclaim { position: absolute; top: 40px; right: 34px; width: 19px; height: auto; z-index: 2; pointer-events: none; opacity: 0; transform-origin: 60% 100%; }
+.m-blue .exclaim { top: 42px; right: 31px; width: 25px; }
+.metric .exclaim.in { animation: exclaimIn .5s cubic-bezier(.2, 1.5, .4, 1) .62s forwards; }
+.metric .exclaim.out { animation: exclaimOut .18s ease-in forwards; }
+@keyframes exclaimIn {
+  0%   { opacity: 0; transform: translateY(6px) scale(.3) rotate(-10deg); }
+  60%  { opacity: 1; transform: translateY(-2px) scale(1.15) rotate(6deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+}
+@keyframes exclaimOut { to { opacity: 0; transform: scale(.4) translateY(2px); } }
+@media (prefers-reduced-motion: reduce) {
+  .tabs.is-ready::before, .tab { transition: none; }
+  .tab.tab-enter, .tab.act .badge { animation: none; }
+  .metric:hover .bubbles .b { animation: none; }
+  .metric .char.in { animation: none; transform: none; opacity: 1; }
+  .metric .char.out { animation: none; opacity: 0; }
+  .metric .exclaim.in { animation: none; opacity: 1; transform: none; }
+  .metric .exclaim.out { animation: none; opacity: 0; }
+  .m-green:hover .char .hand-r, .m-green:hover .char .hand-l { animation: none; }
+  .work .arrow { transition: none; }
+  .work:hover .arrow { transform: none; }
+}
+/* 小足迹（默认灰，hover 渐变变色 + 装饰描边变色） */
+.foot { display: grid; grid-template-columns: 128px 128px 128px; gap: 8px; }
+.foot .box { position: relative; overflow: hidden; height: 79px; background: #fff; border-radius: 8px; box-shadow: inset 0 0 0 1px #EAEBE9; transition: background-color .38s ease, box-shadow .38s ease; }
+.foot .box .ic { position: absolute; inset: 0; width: 128px; height: 79px; pointer-events: none; z-index: 0; }
+.foot .box .ic path { transition: stroke .38s ease; }
+.foot .box > .l1, .foot .box > .cap { position: relative; z-index: 2; }
+.foot .l1 { position: absolute !important; left: 17px; top: 19px; line-height: 18px; display: flex; align-items: baseline; }
+.foot .l1 b { font-size: 18px; font-weight: 600; color: #0A0F02; }
+.foot .l1 span { font-size: 12px; font-weight: 400; color: #4E4F4C; margin-left: 4px; }
+.foot .cap { position: absolute !important; left: 17px; top: 47px; font-size: 13px; font-weight: 400; color: #696A68; line-height: 13px; }
+.foot .box:hover { box-shadow: none; }
+.foot .box:hover .ic path { stroke: var(--hover-icon); }
+.f-pink { --hover-icon: #FFCBE9; } .f-pink:hover { background: #FFF0F9; }
+.f-green { --hover-icon: #D7FBA3; } .f-green:hover { background: #F5FBEC; }
+.f-blue { --hover-icon: #C3EEFD; } .f-blue:hover { background: #E6F8FF; }
+/* 作品卡片 */
+.work { position: relative; width: 400px; height: 70px; border: 1px solid #EAEBE9; border-radius: 12px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; margin-top: 12px; background: #fff; text-align: left; cursor: pointer; font-family: inherit; }
+.work:first-of-type { margin-top: 0; }
+.work .thumb { width: 82px; height: 52px; border: 1px solid #EAEBE9; border-radius: 8px; object-fit: cover; flex: none; background: #f0f0f0; }
+.work .info { flex: 1; min-width: 0; }
+.work .wt { overflow: hidden; font-size: 14px; font-weight: 500; color: #4E4F4C; line-height: 20px; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
+.work .meta { margin-top: 4px; font-size: 14px; font-weight: 400; line-height: 20px; color: #0A0F02; letter-spacing: 0; white-space: nowrap; }
+.work .meta i { font-style: normal; color: #8AB74B; }
+.work .arrow { flex: none; width: 20px; height: 20px; transition: transform .28s cubic-bezier(.16,1,.3,1); }
+.work .arrow path { transition: stroke .24s ease; }
+.work:hover { border-color: #DADCD8; box-shadow: none; }
+.work:hover .arrow { transform: translate(3px, -3px) scale(1.08); }
+.work:hover .arrow path { stroke: #0A0F02; }
+.work:focus-visible { outline: 2px solid rgba(103, 157, 28, .35); outline-offset: 2px; }
+/* 消息页 */
+.card.message-mode {
+  width: 432px;
+  padding: 24px 16px 20px;
+}
+.card.message-mode .hd { display: none; }
+.card.message-mode .scroll { top: 148px; right: 4px; }
+.message-view { display: none; width: 400px; margin-top: 12px; }
+.message-mode .weekly-view { display: none; }
+.message-mode .message-view { display: block; }
+.message-filters {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  width: 400px;
+  height: 31px;
+  padding: 2px;
+  border-radius: 16px;
+  background: #EAEBE9;
+}
+.message-filters::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 2px;
+  bottom: 2px;
+  left: var(--filter-left, 2px);
+  width: var(--filter-width, 76px);
+  border: 0;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: none;
+  pointer-events: none;
+}
+.message-filters.is-ready::before {
+  transition: left .46s cubic-bezier(.22, 1.18, .36, 1), width .28s ease-out;
+}
+.message-filter {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  height: 27px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #878886;
+  cursor: pointer;
+  font: 400 12px/27px "PingFang SC", "PingFang HK", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  white-space: nowrap;
+  transition: color .24s ease, transform .32s cubic-bezier(.22, 1.18, .36, 1);
+}
+.message-filter.is-active {
+  background: transparent;
+  color: #4E4F4C;
+}
+.message-filter:hover { color: #30352C; transform: translateY(-1px); }
+.message-filter:focus-visible {
+  outline: 2px solid rgba(10, 15, 2, .3);
+  outline-offset: -2px;
+}
+.message-filter .count { margin-left: 3px; }
+.message-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.message-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 8px;
+  width: 400px;
+  min-height: 60px;
+  padding: 12px 16px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #EAEBE9;
+  color: #0A0F02;
+  font-family: "PingFang SC", "PingFang HK", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  line-height: normal;
+  transition: transform .24s cubic-bezier(.16, 1, .3, 1), filter .24s ease;
+}
+.message-card[hidden] { display: none; }
+.message-avatar, .message-avatar-stack {
+  display: block;
+  position: relative;
+  z-index: 1;
+  width: 37px;
+  height: 37px;
+}
+.message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #F5F6F5;
+}
+.message-avatar--popo {
+  width: 36px;
+  height: 32px;
+  border-radius: 0;
+  object-fit: contain;
+  background: transparent;
+}
+.message-avatar-stack .message-avatar { position: absolute; top: 0; left: 0; width: 28px; height: 28px; }
+.message-avatar-badge { position: absolute; top: 17px; left: 17px; z-index: 2; display: block; width: 20px; height: 20px; }
+.message-main { position: relative; z-index: 1; min-width: 0; }
+.message-heading { display: flex; min-height: 20px; align-items: center; gap: 4px; font-size: 14px; line-height: normal; white-space: nowrap; }
+.message-heading strong { color: #0A0F02; font-weight: 400; letter-spacing: 0; }
+.message-title { display: inline-flex; min-width: 0; align-items: center; gap: 4px; overflow: hidden; color: #0A0F02; text-overflow: ellipsis; white-space: nowrap; }
+.message-title--boost strong { display: inline-flex; min-width: 0; align-items: center; font-weight: 400; }
+.message-boost-prefix, .message-boost-suffix { flex: none; }
+.message-work-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.message-user { flex: none; margin-right: 0; color: #878886; font-weight: 400; }
+.message-time { display: inline-flex; height: 20px; margin-left: auto; flex: none; align-items: center; color: #BEC0BC; font-size: 12px; font-weight: 400; line-height: normal; }
+.message-muted { color: #878886; font-weight: 400; }
+.message-copy { margin-top: 8px; overflow: hidden; color: #0A0F02; font-size: 14px; font-weight: 400; line-height: normal; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
+.message-action { display: inline-flex; min-height: 20px; align-items: center; gap: 3px; margin-top: 2px; padding: 0; border: 0; background: transparent; color: #679D1C; cursor: pointer; font: 400 12px/normal "PingFang SC", "PingFang HK", -apple-system, "Helvetica Neue", Arial, sans-serif; }
+.message-action::after { content: "›"; font-size: 16px; line-height: 16px; transform: translateY(-.5px); }
+.message-action:hover { color: #517F14; }
+.message-action:focus-visible { outline: 2px solid rgba(103, 157, 28, .32); outline-offset: 2px; border-radius: 4px; }
+.message-quote { display: flex; height: 27px; margin-top: 8px; padding: 5px 8px; align-items: center; overflow: hidden; border-radius: 8px; background: #F5F6F5; color: #0A0F02; font-family: "PingFang SC", "PingFang HK", -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 12px; font-style: normal; font-weight: 400; line-height: normal; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
+.message-card--notice {
+  height: 120px;
+  background-color: #F4FFE4;
+  background-image: url("./assets/popo-notice-background@4x.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 400px 120px;
+  box-shadow: none;
+}
+.message-card--notice .message-copy {
+  margin-top: 8px;
+  overflow: visible;
+  color: #0A0F02;
+  font-size: 14px;
+  line-height: normal;
+  text-overflow: clip;
+  white-space: normal;
+}
+.message-card--notice .message-heading strong,
+.message-card--badge .message-heading strong { font-weight: 500; }
+.message-card--notice .message-action { position: absolute; left: 0; bottom: 0; margin-top: 0; }
+.message-card--notice .message-time { position: absolute; right: 0; bottom: 0 !important; }
+.message-card--badge { height: 120px; }
+.message-card--badge .message-main { display: flex; flex-direction: column; }
+.message-card--badge > .message-earned-badge { align-self: start; }
+.message-card--badge .message-heading { margin-left: -2px; }
+.message-badge-footer { display: flex; height: 20px; align-items: center; justify-content: space-between; }
+.message-badge-footer .message-action { margin-top: 0; }
+.message-earned-badge { width: 36px; height: 36px; flex: none; object-fit: contain; }
+.message-badge-copy { min-width: 0; margin-top: 8px; color: #0A0F02; font-size: 14px; font-weight: 400; line-height: normal; letter-spacing: 0; }
+.message-card--badge .message-badge-footer { margin-top: auto; }
+.message-card--comment { height: 107px; }
+.message-card--comment .message-heading { padding-right: 76px; }
+.message-card--compact .message-heading { padding-right: 0; }
+.message-card--comment .message-action { position: absolute; left: 0; bottom: 0; margin-top: 0; }
+.message-card--comment .message-time { position: absolute; right: 0; bottom: 0; }
+.message-card--compact { height: 72px; }
+.message-card--compact .message-time { position: absolute; right: 0; top: 28px; }
+.message-card:hover {
+  transform: translateY(-1px);
+  filter: none;
+}
+.message-card:not(.message-card--notice):hover { box-shadow: inset 0 0 0 1px #EAEBE9; }
+.message-card--notice:hover { box-shadow: none; }
+@media (prefers-reduced-motion: reduce) {
+  .message-filters.is-ready::before, .message-filter, .message-card { transition: none; }
+  .message-filter:hover, .message-card:hover { transform: none; }
+}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="scroll"></div>
+
+  <div class="tabs" role="tablist" aria-label="动态分类">
+    <button class="tab msg act" type="button" role="tab" aria-selected="true" tabindex="0">
+      消息<img class="badge" src="./restore-assets/tab-badge.svg" alt="28 条消息" />
+    </button>
+    <button class="tab" type="button" role="tab" aria-selected="false" tabindex="-1">每周冒泡</button>
+  </div>
+
+  <div class="message-view" aria-label="消息内容">
+    <div class="message-filters" role="tablist" aria-label="消息类型">
+      <button class="message-filter is-active" type="button" role="tab" aria-selected="true">全部<span class="count">6</span></button>
+      <button class="message-filter" type="button" role="tab" aria-selected="false">打气<span class="count">2</span></button>
+      <button class="message-filter" type="button" role="tab" aria-selected="false">评论<span class="count">2</span></button>
+      <button class="message-filter" type="button" role="tab" aria-selected="false">徽章<span class="count">1</span></button>
+      <button class="message-filter" type="button" role="tab" aria-selected="false">通知<span class="count">1</span></button>
+    </div>
+    <div class="message-list" role="list">
+      <article class="message-card message-card--notice" data-message-type="notice" data-message-time="2026-09-12T18:30:00" role="listitem">
+        <img class="message-avatar message-avatar--popo" src="./assets/popo-notice-avatar.svg" alt="popo" />
+        <div class="message-main"><div class="message-heading"><strong>popo 通知</strong><span class="message-muted">「每周冒泡」已送达</span></div><p class="message-copy">上周收到的打气与回复、主页来访和新点亮的徽章，已经为你整理好了</p><button class="message-action" type="button" data-message-action="weekly">查看每周冒泡</button><span class="message-time" style="position:absolute;right:0;bottom:0">18:30</span></div>
+      </article>
+      <article class="message-card message-card--badge" data-message-type="badge" data-message-time="2026-09-12T17:30:00" role="listitem">
+        <img class="message-earned-badge" src="./assets/badge-notification-icon.svg" alt="首赞者徽章" />
+        <div class="message-main"><div class="message-heading"><strong>「首赞者」等你点亮</strong></div><p class="message-badge-copy">你成为《极光故事板》的第一位打气者，已满足徽章条件。</p><div class="message-badge-footer"><button class="message-action" type="button" data-message-action="badge">去点亮</button><span class="message-time">17:30</span></div></div>
+      </article>
+      <article class="message-card message-card--comment" data-message-type="comment" data-message-time="2026-09-09T11:17:00" role="listitem">
+        <span class="message-avatar-stack"><img class="message-avatar" src="../assets/avatars/void.jpg" alt="void" /><img class="message-avatar-badge" src="./restore-assets/comment-badge.svg" alt="评论" /></span>
+        <div class="message-main"><div class="message-heading"><span class="message-title"><span class="message-user">void</span><strong>评论了你的《团队周报可视化面板》</strong></span></div><blockquote class="message-quote">数据阅读路径很清晰，指标层级也一眼就能看懂。</blockquote><button class="message-action" type="button" data-message-action="comment" data-work-id="7188">去评论</button><span class="message-time">3 天前</span></div>
+      </article>
+      <article class="message-card message-card--compact" data-message-type="boost" data-message-time="2026-09-12T17:00:00" role="listitem">
+        <span class="message-avatar-stack"><img class="message-avatar" src="../assets/avatars/arjun.jpg" alt="arjun" /><img class="message-avatar-badge" src="./restore-assets/boost-badge.svg" alt="打气" /></span>
+        <div class="message-main"><div class="message-heading"><span class="message-title message-title--boost"><span class="message-user">arjun</span><strong><span class="message-boost-prefix">给你的《</span><span class="message-work-name">团队周报可视化面板</span><span class="message-boost-suffix">》打了气</span></strong></span><span class="message-time">17:00</span></div><p class="message-copy">作品累计收到 42 次打气</p></div>
+      </article>
+      <article class="message-card message-card--comment" data-message-type="comment" data-message-time="2026-09-12T14:26:00" role="listitem">
+        <span class="message-avatar-stack"><img class="message-avatar" src="../assets/avatars/mia.jpg" alt="mia" /><img class="message-avatar-badge" src="./restore-assets/comment-badge.svg" alt="评论" /></span>
+        <div class="message-main"><div class="message-heading"><span class="message-title"><span class="message-user">mia</span><strong>评论了你的《小红书舆情监控》</strong></span></div><blockquote class="message-quote">地图与趋势图的联动很自然，信息密度刚刚好。</blockquote><button class="message-action" type="button" data-message-action="comment" data-work-id="7188">去评论</button><span class="message-time">14:26</span></div>
+      </article>
+      <article class="message-card message-card--compact" data-message-type="boost" data-message-time="2026-09-12T16:51:00" role="listitem">
+        <span class="message-avatar-stack"><img class="message-avatar" src="../assets/avatars/nolan.jpg" alt="nolan" /><img class="message-avatar-badge" src="./restore-assets/boost-badge.svg" alt="打气" /></span>
+        <div class="message-main"><div class="message-heading"><span class="message-title message-title--boost"><span class="message-user">nolan</span><strong><span class="message-boost-prefix">给你的《</span><span class="message-work-name">反馈分析综合报告</span><span class="message-boost-suffix">》打了气</span></strong></span><span class="message-time">16:51</span></div></div>
+      </article>
+    </div>
+  </div>
+
+  <div class="weekly-view">
+  <div class="banner" role="img" aria-label="你的参与，也被看见了 · 为你收好这一周的回应、来访与小成就">
+    <span class="banner-title">你的参与，也被看见了</span>
+    <span class="banner-meta"><span>08/24–08/30</span><span>为你收好这一周的回应、来访与小成就</span></span>
+  </div>
+
+  <div class="sec">这一周，与你有关</div>
+  <div class="metrics">
+    <div class="metric m-green">
+      <div class="t">收到打气</div>
+      <div class="n"><b>120</b><span>次</span></div>
+      <div class="note">共 38 次 较上周<em>+4人</em></div>
+      <div class="bubbles" aria-hidden="true">
+        <span class="b" style="left:56%;--dur:4.6s;--delay:-3.4s;--dx:4px"><img src="./restore-assets/bubble3.svg" width="28" alt=""></span>
+        <span class="b" style="left:78%;--dur:3.6s;--delay:-2.4s;--dx:-6px"><img src="./restore-assets/bubble2.svg" width="18" alt=""></span>
+        <span class="b" style="left:67%;--dur:3.9s;--delay:-1.2s;--dx:7px"><img src="./restore-assets/bubble1.svg" width="12" alt=""></span>
+        <span class="b" style="left:86%;--dur:4.2s;--delay:0s;--dx:-4px"><img src="./restore-assets/bubble2.svg" width="15" alt=""></span>
+      </div>
+      <svg class="char" viewBox="0 0 76 67" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+        <image href="./restore-assets/ip-body.svg" x="0" y="0" width="76" height="67"/>
+        <g class="hand-r"><image href="./restore-assets/right-hand.png" x="7.585" y="23.874" width="21.5" height="19.75"/></g>
+        <g class="hand-l"><image href="./restore-assets/left-hand.png" x="37.96" y="31.926" width="18.75" height="22.25"/></g>
+      </svg>
+    </div>
+    <div class="metric m-pink">
+      <div class="t">主页被浏览</div>
+      <div class="n"><b>86</b><span>次</span></div>
+      <div class="note">62 位访客</div>
+      <div class="bubbles" aria-hidden="true">
+        <span class="b" style="left:56%;--dur:4.6s;--delay:-3.4s;--dx:4px"><img src="./restore-assets/bubble-p3.svg" width="28" alt=""></span>
+        <span class="b" style="left:78%;--dur:3.6s;--delay:-2.4s;--dx:-6px"><img src="./restore-assets/bubble-p2.svg" width="18" alt=""></span>
+        <span class="b" style="left:67%;--dur:3.9s;--delay:-1.2s;--dx:7px"><img src="./restore-assets/bubble-p1.svg" width="12" alt=""></span>
+        <span class="b" style="left:86%;--dur:4.2s;--delay:0s;--dx:-4px"><img src="./restore-assets/bubble-p2.svg" width="15" alt=""></span>
+      </div>
+      <img class="char" src="./restore-assets/ip-pink.png" alt="" aria-hidden="true">
+      <img class="exclaim" src="./restore-assets/exclaim.svg" alt="" aria-hidden="true">
+    </div>
+    <div class="metric m-blue">
+      <div class="t">收到回复</div>
+      <div class="n"><b>20</b><span>次</span></div>
+      <div class="note">3 位朋友回应了你</div>
+      <div class="bubbles" aria-hidden="true">
+        <span class="b" style="left:55%;--dur:4.6s;--delay:-3.4s;--dx:4px"><img src="./restore-assets/blue-bubble-1.svg" width="24" alt=""></span>
+        <span class="b" style="left:72%;--dur:3.6s;--delay:-2.4s;--dx:-6px"><img src="./restore-assets/blue-bubble-2.svg" width="15" alt=""></span>
+        <span class="b" style="left:83%;--dur:3.9s;--delay:-1.2s;--dx:7px"><img src="./restore-assets/blue-bubble-3.svg" width="15" alt=""></span>
+        <span class="b" style="left:90%;--dur:4.2s;--delay:0s;--dx:-4px"><img src="./restore-assets/blue-bubble-2.svg" width="13" alt=""></span>
+      </div>
+      <img class="char" src="./restore-assets/blue-card-character.png" alt="" aria-hidden="true">
+      <img class="exclaim" src="./restore-assets/blue-question.svg" alt="" aria-hidden="true">
+    </div>
+    <div class="metric m-yellow">
+      <div class="t">点亮徽章</div>
+      <div class="n"><b>1</b><span>次</span></div>
+      <div class="note">「打气搭子」收入藏馆</div>
+      <div class="bubbles" aria-hidden="true">
+        <span class="b" style="left:58%;--dur:4.4s;--delay:-3.1s;--dx:5px"><img src="./restore-assets/yellow-bubble-1.svg" width="42" alt=""></span>
+        <span class="b" style="left:76%;--dur:3.5s;--delay:-2.1s;--dx:-5px"><img src="./restore-assets/yellow-bubble-2.svg" width="20" alt=""></span>
+        <span class="b" style="left:67%;--dur:3.8s;--delay:-.9s;--dx:6px"><img src="./restore-assets/yellow-bubble-3.svg" width="20" alt=""></span>
+      </div>
+      <img class="char" src="./restore-assets/yellow-card-character.png" alt="" aria-hidden="true">
+    </div>
+  </div>
+
+  <div class="sec">你也留下了这些小足迹</div>
+  <div class="foot">
+    <div class="box f-pink">
+      <svg class="ic" viewBox="0 0 128 79" fill="none" aria-hidden="true"><path d="M111.019 80.1681C121.291 80.1681 130.528 73.0415 136.922 66.3735C143.089 59.943 143.089 50.0649 136.922 43.6345C130.528 36.9664 121.291 29.8398 111.019 29.8398C100.746 29.8398 91.5092 36.9664 85.1146 43.6345C78.9479 50.0649 78.9479 59.943 85.1146 66.3735C91.5092 73.0415 100.746 80.1681 111.019 80.1681Z" stroke="#F5F6F5" stroke-width="6" stroke-linejoin="round"/><path d="M111.023 63.731C115.848 63.731 119.76 59.819 119.76 54.9934C119.76 50.1678 115.848 46.2559 111.023 46.2559C106.197 46.2559 102.285 50.1678 102.285 54.9934C102.285 59.819 106.197 63.731 111.023 63.731Z" stroke="#F5F6F5" stroke-width="6" stroke-linejoin="round"/></svg>
+      <div class="l1"><b>18</b><span>个</span></div><div class="cap">看过的作品</div>
+    </div>
+    <div class="box f-green">
+      <svg class="ic" viewBox="0 0 128 79" fill="none" aria-hidden="true"><path d="M109.611 91.458C124.318 91.458 136.241 79.5352 136.241 64.8276C136.241 50.1201 124.318 38.1973 109.611 38.1973C94.9033 38.1973 82.9805 50.1201 82.9805 64.8276C82.9805 79.5352 94.9033 91.458 109.611 91.458Z" stroke="#F5F6F5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M115.133 50.5625C117.299 50.8334 121.633 52.1875 123.258 58.6875" stroke="#F5F6F5" stroke-width="6" stroke-linecap="round"/><path d="M79.9163 36.4498C85.064 36.4498 89.2369 32.2769 89.2369 27.1292C89.2369 21.9816 85.064 17.8086 79.9163 17.8086C74.7687 17.8086 70.5957 21.9816 70.5957 27.1292C70.5957 32.2769 74.7687 36.4498 79.9163 36.4498Z" stroke="#F5F6F5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="l1"><b>10</b><span>次</span></div><div class="cap">送出的打气</div>
+    </div>
+    <div class="box f-blue">
+      <svg class="ic" viewBox="0 0 128 79" fill="none" aria-hidden="true"><path d="M131.806 50.7531C130.483 35.775 117.9 24.0652 102.409 25.6568C88.2319 26.294 76.77 39.0541 77.4422 53.0558C77.7306 60.2206 80.9057 66.9716 86.2567 71.7976C88.1172 73.4666 90.6739 75.1662 92.9514 76.2275V84.619C97.205 84.619 101.331 84.162 105.521 83.3929C109.319 82.4794 112.557 81.4352 116.033 79.5816C126.914 73.7784 132.884 62.9502 131.806 50.7531Z" stroke="#F5F6F5" stroke-width="6" stroke-linejoin="round"/><path d="M110.672 60.4609C108.908 61.833 104.791 63.9893 98.9108 60.4609" stroke="#F5F6F5" stroke-width="6" stroke-linecap="round"/></svg>
+      <div class="l1"><b>4</b><span>条</span></div><div class="cap">留下的评论</div>
+    </div>
+  </div>
+
+  <div class="sec">上周最受欢迎作品</div>
+  <button class="work" type="button" data-work-route="7188" aria-label="打开小红书舆情监控·百度地图">
+    <img class="thumb" src="../assets/covers/7188.webp" alt="小红书舆情监控·百度地图封面" />
+    <div class="info">
+      <div class="wt">小红书舆情监控·百度地图</div>
+      <div class="meta"><i>1286次</i>作品浏览 <i>14次</i>打气</div>
+    </div>
+    <svg class="arrow" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.66602 13.3333L13.7493 6.25" stroke="#4E4F4C" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.25 6.25H13.75V13.75" stroke="#4E4F4C" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="work" type="button" data-work-route="2453" aria-label="打开反馈分析综合报告-问题">
+    <img class="thumb" src="../assets/covers/2453.webp" alt="反馈分析综合报告-问题封面" />
+    <div class="info">
+      <div class="wt">反馈分析综合报告-问题</div>
+      <div class="meta"><i>950次</i>作品浏览 <i>22次</i>打气</div>
+    </div>
+    <svg class="arrow" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.66602 13.3333L13.7493 6.25" stroke="#4E4F4C" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.25 6.25H13.75V13.75" stroke="#4E4F4C" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="work" type="button" data-work-route="8611" aria-label="打开合规链路监控报告">
+    <img class="thumb" src="../assets/covers/8611.webp" alt="合规链路监控报告封面" />
+    <div class="info">
+      <div class="wt">合规链路监控报告 - 8775</div>
+      <div class="meta"><i>163次</i>作品浏览 <i>8次</i>打气</div>
+    </div>
+    <svg class="arrow" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.66602 13.3333L13.7493 6.25" stroke="#4E4F4C" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.25 6.25H13.75V13.75" stroke="#4E4F4C" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  </div>
+</main>
+<script>
+(function () {
+  if (new URLSearchParams(location.search).get('embed') === '1') {
+    document.body.classList.add('embed-mode');
+  }
+  var shell = document.querySelector('.card');
+  var tabList = document.querySelector('.tabs');
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tabs .tab'));
+  var messageFilterList = document.querySelector('.message-filters');
+  var messageFilters = Array.prototype.slice.call(document.querySelectorAll('.message-filter'));
+  var messageList = document.querySelector('.message-list');
+  if (messageList) {
+    Array.prototype.slice.call(messageList.querySelectorAll('.message-card'))
+      .sort(function (a, b) {
+        return new Date(b.getAttribute('data-message-time')).getTime() - new Date(a.getAttribute('data-message-time')).getTime();
+      })
+      .forEach(function (card) { messageList.appendChild(card); });
+  }
+  var scrollThumb = document.querySelector('.scroll');
+  var firstMessageCard = document.querySelector('.message-card');
+  function syncCustomScrollbar() {
+    if (!shell || !scrollThumb) return;
+    var viewportHeight = shell.clientHeight;
+    var contentHeight = shell.scrollHeight;
+    if (contentHeight <= viewportHeight + 1) {
+      scrollThumb.hidden = true;
+      return;
+    }
+    scrollThumb.hidden = false;
+    var trackTop = shell.classList.contains('message-mode') && firstMessageCard
+      ? firstMessageCard.offsetTop
+      : 113;
+    var trackBottom = 20;
+    var trackHeight = Math.max(44, viewportHeight - trackTop - trackBottom);
+    var thumbHeight = Math.max(40, trackHeight * viewportHeight / contentHeight);
+    var maxScroll = contentHeight - viewportHeight;
+    var progress = maxScroll > 0 ? shell.scrollTop / maxScroll : 0;
+    var thumbOffset = (trackHeight - thumbHeight) * progress;
+    scrollThumb.style.height = thumbHeight + 'px';
+    scrollThumb.style.top = (shell.scrollTop + trackTop + thumbOffset) + 'px';
+  }
+  function syncTabIndicator() {
+    var activeTab = tabList && tabList.querySelector('.tab.act');
+    if (!activeTab) return;
+    tabList.style.setProperty('--tab-left', activeTab.offsetLeft + 'px');
+    tabList.style.setProperty('--tab-width', activeTab.offsetWidth + 'px');
+  }
+  function syncPageView(activeTab) {
+    if (shell) shell.classList.toggle('message-mode', activeTab && activeTab.classList.contains('msg'));
+  }
+  function syncFilterIndicator() {
+    var activeFilter = document.querySelector('.message-filter.is-active');
+    if (!activeFilter || !messageFilterList) return;
+    messageFilterList.style.setProperty('--filter-left', activeFilter.offsetLeft + 'px');
+    messageFilterList.style.setProperty('--filter-width', activeFilter.offsetWidth + 'px');
+  }
+  function activateTab(nextTab) {
+    var currentTab = tabList && tabList.querySelector('.tab.act');
+    if (!nextTab || nextTab === currentTab) return;
+    tabs.forEach(function (tab) {
+      var active = tab === nextTab;
+      tab.classList.toggle('act', active);
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    syncPageView(nextTab);
+    shell.scrollTop = 0;
+    nextTab.classList.remove('tab-enter');
+    void nextTab.offsetWidth;
+    nextTab.classList.add('tab-enter');
+    requestAnimationFrame(function () { syncTabIndicator(); syncCustomScrollbar(); });
+    nextTab.focus();
+  }
+  function activateMessageFilter(nextFilter) {
+    if (!nextFilter) return;
+    messageFilters.forEach(function (item) {
+      var active = item === nextFilter;
+      item.classList.toggle('is-active', active);
+      item.setAttribute('aria-selected', String(active));
+    });
+    var filterNames = ['all', 'boost', 'comment', 'badge', 'notice'];
+    var selectedType = filterNames[messageFilters.indexOf(nextFilter)] || 'all';
+    document.querySelectorAll('.message-card').forEach(function (card) {
+      card.hidden = selectedType !== 'all' && card.getAttribute('data-message-type') !== selectedType;
+    });
+  }
+  function resetInboxToMessages() {
+    var messageTab = tabs[0];
+    if (messageTab) {
+      tabs.forEach(function (tab) {
+        var active = tab === messageTab;
+        tab.classList.toggle('act', active);
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+      });
+      syncPageView(messageTab);
+    }
+    activateMessageFilter(messageFilters[0]);
+    if (shell) shell.scrollTop = 0;
+    requestAnimationFrame(function () {
+      syncTabIndicator();
+      syncFilterIndicator();
+      syncCustomScrollbar();
+    });
+  }
+  tabs.forEach(function (tab, index) {
+    tab.addEventListener('click', function () {
+      activateTab(tab);
+    });
+    tab.addEventListener('keydown', function (event) {
+      var nextIndex = index;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % tabs.length;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = tabs.length - 1;
+      if (nextIndex !== index) {
+        event.preventDefault();
+        activateTab(tabs[nextIndex]);
+      }
+    });
+  });
+  syncTabIndicator();
+  syncPageView(tabList && tabList.querySelector('.tab.act'));
+  syncCustomScrollbar();
+  if (tabList) tabList.classList.add('is-ready');
+  window.addEventListener('resize', function () { syncTabIndicator(); syncCustomScrollbar(); });
+  if (shell) shell.addEventListener('scroll', syncCustomScrollbar, { passive: true });
+  if (window.location.hash === '#messages' && tabs[0]) activateTab(tabs[0]);
+
+  messageFilters.forEach(function (filter) {
+    filter.addEventListener('click', function () {
+      activateMessageFilter(filter);
+      shell.scrollTop = 0;
+      requestAnimationFrame(syncFilterIndicator);
+      requestAnimationFrame(syncCustomScrollbar);
+    });
+  });
+  syncFilterIndicator();
+  if (messageFilterList) messageFilterList.classList.add('is-ready');
+  window.addEventListener('resize', syncFilterIndicator);
+  window.addEventListener('message', function (event) {
+    var trustedOrigin = window.location.protocol === 'file:'
+      ? event.origin === 'null'
+      : event.origin === window.location.origin;
+    if (!trustedOrigin || event.data?.source !== 'popo-inbox-host') return;
+    if (event.data.action === 'reset-to-messages') resetInboxToMessages();
+  });
+
+  document.querySelectorAll('[data-message-action]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var action = button.getAttribute('data-message-action');
+      if (action === 'weekly' && tabs[1]) { activateTab(tabs[1]); return; }
+      if (action === 'comment') {
+        window.parent.postMessage({ source: 'popo-inbox', action: 'open-comment', workId: button.getAttribute('data-work-id') || '7188' }, window.location.origin);
+      }
+    });
+  });
+  document.querySelectorAll('[data-work-route]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      window.parent.postMessage({ source: 'popo-inbox', action: 'open-work', workId: button.getAttribute('data-work-route') }, window.location.origin);
+    });
+  });
+
+  var cards = document.querySelectorAll('.metric.m-green, .metric.m-pink, .metric.m-blue, .metric.m-yellow');
+  cards.forEach(function (card) {
+    var ch = card.querySelector('.char');
+    var ex = card.querySelector('.exclaim');
+    card.addEventListener('mouseenter', function () {
+      if (ch) { ch.classList.remove('out'); ch.classList.add('in'); }
+      if (ex) { ex.classList.remove('out'); ex.classList.add('in'); }
+    });
+    card.addEventListener('mouseleave', function () {
+      if (ch && ch.classList.contains('in')) { ch.classList.remove('in'); ch.classList.add('out'); }
+      if (ex && ex.classList.contains('in')) { ex.classList.remove('in'); ex.classList.add('out'); }
+    });
+    if (ch) ch.addEventListener('animationend', function (e) { if (e.animationName === 'charExit') ch.classList.remove('out'); });
+    if (ex) ex.addEventListener('animationend', function (e) { if (e.animationName === 'exclaimOut') ex.classList.remove('out'); });
+  });
+})();
+</script>
+</body>
+</html>

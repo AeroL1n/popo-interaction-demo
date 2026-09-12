@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>popo</title>
+    <link rel="icon" type="image/svg+xml" sizes="any" href="./assets/home/popo-avatar.svg?v=1" />
+    <link rel="stylesheet" href="./styles.css?v=20260912ct" />
+    <link rel="stylesheet" href="./toolbar-final.css?v=20260809aa" />
+    <script>
+      document.addEventListener('pointerover', function (event) {
+        var mailbox = event.target.closest && event.target.closest('.avatar-mailbox-root');
+        if (!mailbox || mailbox.contains(event.relatedTarget)) return;
+        var frame = mailbox.querySelector('.avatar-mailbox-popover iframe');
+        if (frame && frame.contentWindow) {
+          frame.contentWindow.postMessage(
+            { source: 'popo-inbox-host', action: 'reset-to-messages' },
+            location.protocol === 'file:' ? '*' : location.origin
+          );
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div class="home-onboarding-overlay" data-home-onboarding aria-hidden="true" hidden>
+      <video
+        class="home-onboarding-video"
+        data-home-onboarding-video
+        src="https://now.bdstatic.com/stash/v1/0b72aae/comate-plus-web/7a0aaaf/popo/onboarding.mp4"
+        autoplay
+        crossorigin="anonymous"
+        muted
+        playsinline
+        preload="auto"
+        disablepictureinpicture
+      ></video>
+    </div>
+    <div class="home-page">
+      <div class="hero-aurora" aria-hidden="true">
+        <video
+          class="aurora-video"
+          src="./assets/home/home-bg.mp4"
+          poster="./assets/home/home-bg-poster.jpg"
+          autoplay
+          muted
+          loop
+          playsinline
+        ></video>
+        <div class="aurora-fade"></div>
+      </div>
+
+      <div class="side-bubbles" aria-hidden="true">
+        <div class="aurora-side aurora-side-left"></div>
+        <div class="aurora-side aurora-side-right"></div>
+      </div>
+
+      <header class="home-topbar">
+        <div class="sticky-aurora-layer" aria-hidden="true">
+          <video class="sticky-aurora-video" src="./assets/home/home-bg.mp4" poster="./assets/home/home-bg-poster.jpg" autoplay muted loop playsinline></video>
+        </div>
+        <div class="topbar-inner">
+          <button class="brand-button" type="button" aria-label="popo 首页">
+            <img src="./assets/home/logo.png" alt="popo" />
+          </button>
+
+          <div class="topbar-search" data-search-container="compact"></div>
+
+          <div class="topbar-actions">
+            <button class="publish-button" id="publishButton" type="button">
+              <img class="corner corner-top" src="./assets/icons/corner-bracket.svg" alt="" />
+              <span class="publish-button-label">发个泡泡</span>
+              <img class="corner corner-bottom" src="./assets/icons/corner-bracket.svg" alt="" />
+              <span class="publish-new-badge" aria-label="新功能">NEW</span>
+            </button>
+            <div class="topbar-avatar-area avatar-mailbox-root">
+              <button class="avatar-button topbar-avatar-link" id="profileButton" type="button" title="个人中心" aria-label="个人中心">
+                <span class="topbar-avatar-glow topbar-avatar-glow--playing" aria-hidden="true"><span class="topbar-avatar-glow__halo topbar-avatar-glow__halo--white"></span><span class="topbar-avatar-glow__halo topbar-avatar-glow__halo--pink"></span><span class="topbar-avatar-glow__halo topbar-avatar-glow__halo--yellow"></span></span>
+                <span class="avatar-status-ring" aria-hidden="true"></span>
+                <img src="./assets/avatars/linyuhang.jpg" alt="linyuhang" />
+                <span class="avatar-status-badge" aria-label="28 条未读消息">28</span>
+              </button>
+              <div class="avatar-mailbox-popover" aria-label="消息通知">
+                <iframe src="./inbox-prototype/weekly-default.html?embed=1&amp;v=20260912bj" title="消息通知" loading="eager"></iframe>
+              </div>
+              <div class="topbar-avatar-guide" data-avatar-guide role="status" hidden>
+                <img class="topbar-avatar-guide__bubble" src="./assets/home/avatar-guide/union.png" alt="" aria-hidden="true" />
+                <span class="topbar-avatar-guide__text">前往个人中心去查看作品、发布作品吧</span>
+                <button class="topbar-avatar-guide__close" type="button" data-close-avatar-guide aria-label="关闭个人中心引导"><span aria-hidden="true"></span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-main">
+        <section class="hero-search" aria-labelledby="pageTitle">
+          <h1 id="pageTitle">每个作品都值得冒泡</h1>
+          <div data-search-container="hero"></div>
+        </section>
+
+        <section class="works-panel" aria-label="作品列表">
+          <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="作品分类"></div>
+          <div class="works-region" aria-live="polite">
+            <div class="masonry" id="worksGrid"></div>
+            <div class="empty-state" id="emptyState" hidden><img class="empty-bubble" src="./assets/home/empty-bubble.png" alt="" /><p>这里还没有泡泡</p></div>
+            <div class="load-more" id="loadMore" aria-live="polite">加载中...</div>
+          </div>
+        </section>
+      </main>
+
+      <div class="home-floating-actions" aria-label="页面快捷操作">
+        <button class="home-floating-action back-to-top" id="backToTop" type="button" title="返回顶部" aria-label="返回顶部">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+        </button>
+        <button class="home-floating-action refresh-works" id="refreshWorks" type="button" title="刷新作品" aria-label="刷新作品">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5" /><path d="M18.4 9A7 7 0 0 0 6.2 6.2L4 8m16 8-2.2 2.2A7 7 0 0 1 5.6 15" /></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="route-page" id="routePage" hidden></div>
+
+    <div class="modal-backdrop" id="publishModal" hidden>
+      <section class="bubble-compose-dialog" role="dialog" aria-modal="true" aria-labelledby="publishTitle">
+        <span class="bubble-compose-export" aria-hidden="true">
+          <img class="bubble-compose-export-default" src="./assets/figma-export/bubble-modal-default-render.svg" alt="" />
+          <img class="bubble-compose-export-hover" src="./assets/figma-export/bubble-modal-hover-render.svg" alt="" />
+        </span>
+        <img class="bubble-compose-art" src="./assets/publish/发个泡泡 弹窗背景.svg" alt="" aria-hidden="true" />
+        <img class="bubble-compose-copy-art" src="./assets/publish/Union.svg" alt="每个泡泡都值得冒泡，快来吹个泡泡" />
+        <span class="bubble-compose-frame" aria-hidden="true">
+          <img src="./assets/publish/白色的框.svg" alt="" />
+          <span></span>
+        </span>
+        <button class="bubble-compose-close" type="button" data-close-modal title="关闭" aria-label="关闭"><span aria-hidden="true"></span></button>
+        <div class="bubble-compose-content">
+          <button class="bubble-drop-zone" type="button" data-bubble-file-trigger aria-label="选择文件或拖入文件">
+            <span class="bubble-folder-art" aria-hidden="true">
+              <img class="folder-shadow" src="./assets/publish/文件夹投影.svg" alt="" />
+              <img class="folder-back" src="./assets/publish/文件夹背面.svg" alt="" />
+              <img class="folder-card folder-card-pink" src="./assets/publish/粉色卡片.svg" alt="" />
+              <img class="folder-card folder-card-yellow" src="./assets/publish/黄色卡片.svg" alt="" />
+              <img class="folder-card folder-card-blue" src="./assets/publish/蓝色卡片.svg" alt="" />
+              <img class="folder-card folder-card-purple" src="./assets/publish/紫色卡片.svg" alt="" />
+              <img class="folder-cover" src="./assets/publish/文件夹封面.svg" alt="" />
+            </span>
+            <strong id="publishTitle"><img src="./assets/publish/丢点什么进来吧.svg" alt="丢点什么进来吧" /><img class="bubble-title-mark" src="./assets/publish/泡泡.svg" alt="" aria-hidden="true" /></strong>
+            <span class="bubble-drop-copy"><img src="./assets/publish/Excel、文档、图片拖进来，看看它能变成什么样.svg" alt="Excel、文档、图片拖进来，看看它能变成什么样" /></span>
+          </button>
+          <div class="bubble-prompt-shell">
+            <img class="bubble-input-feather" src="./assets/publish/羽毛笔.svg" alt="" aria-hidden="true" />
+            <img class="bubble-input-placeholder" src="./assets/publish/一句话也能发个泡泡….svg" alt="" aria-hidden="true" />
+            <img class="bubble-input-underline" src="./assets/publish/输入框下划线.svg" alt="" aria-hidden="true" />
+            <input id="bubblePrompt" type="text" maxlength="200" placeholder="一句话也能发个泡泡..." autocomplete="off" />
+          </div>
+          <input id="bubbleFileInput" type="file" hidden multiple accept=".xlsx,.xls,.doc,.docx,.pdf,.png,.jpg,.jpeg,.gif,.webp" />
+          <button class="bubble-submit" type="button" data-bubble-submit>
+            <img class="bubble-submit-art" src="./assets/publish/按钮.svg" alt="发个泡泡" />
+          </button>
+          <button class="bubble-other-tools" type="button" data-bubble-other>用别的工具 <span aria-hidden="true">›</span></button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="legacyPublishModal" hidden>
+      <section class="publish-dialog" role="dialog" aria-modal="true" aria-labelledby="legacyPublishTitle">
+        <button class="modal-close" type="button" data-close-modal title="关闭" aria-label="关闭">×</button>
+        <h2 id="legacyPublishTitle">如何在 popo 发布作品？</h2>
+        <div class="publish-columns">
+          <div class="publish-column">
+            <h3><img src="./assets/home/popover/dodo-icon.png" alt="" />在 dodo 发布</h3>
+            <ol>
+              <li><strong>使用 dodo 生成页面</strong><span>打开 dodo Web 端 <span class="publish-text-link">dodo.baidu-int.com</span> 或 <span class="publish-text-link">如流 dodo 对话</span>，描述你想做的内容，并让它生成 HTML，说得越具体效果越好。</span></li>
+              <li><strong>发布到 popo</strong><span>点预览页右上角的「发布到 popo」，几秒钟后就能拿到一条专属链接，可以分享给任何人，也可私密发布，在 popo 中管理自己的灵感和作品。</span></li>
+            </ol>
+          </div>
+          <div class="publish-column publish-comate">
+            <h3><img src="./assets/home/popover/comate-icon.png" alt="" />在 Comate 发布</h3>
+            <ol>
+              <li><strong>下载 Comate 生成页面</strong><span>前往 <span class="publish-text-link">comate.baidu.com/zh/download#ailde</span> 下载安装，给自己配上一位全能搭子。打开 Comate 窗口，让它帮你生成页面。</span></li>
+              <li><strong>一键部署到 popo</strong><span>在对话里说句「发布」，或直接敲 /popo 发布，一行命令就能拿到一条专属链接，可以分享给任何人，也可私密发布，在 popo 中管理自己的灵感和作品。</span></li>
+            </ol>
+          </div>
+        </div>
+        <p class="publish-dialog-foot">想使用 Dumate、codex 等其他工具发布作品？安装专属 skill <span class="publish-text-link">点我去下载</span>，即可轻松发布！ <span class="publish-text-link">更多介绍戳这里~</span></p>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="detailModal" hidden>
+      <section class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+        <button class="modal-close" type="button" data-close-modal title="关闭" aria-label="关闭">×</button>
+        <img id="detailCover" src="./assets/covers/7188.webp" alt="" />
+        <div class="detail-copy">
+          <p class="detail-label">作品预览</p>
+          <h2 id="detailTitle"></h2>
+          <div class="detail-author"><img id="detailAvatar" src="./assets/avatars/nova.jpg" alt="" /><span id="detailOwner"></span></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="profileModal" hidden>
+      <section class="profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+        <button class="modal-close" type="button" data-close-modal title="关闭" aria-label="关闭">×</button>
+        <img src="./assets/avatars/linyuhang.jpg" alt="linyuhang" />
+        <h2 id="profileTitle">linyuhang</h2>
+        <p>个人中心</p>
+        <div class="profile-stats"><span><strong>12</strong>作品</span><span><strong>86</strong>获赞</span></div>
+      </section>
+    </div>
+
+    <div class="home-action-tooltip" id="homeActionTooltip" role="tooltip" data-side="top" aria-hidden="true"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js?v=20260912ct"></script>
+  </body>
+</html>

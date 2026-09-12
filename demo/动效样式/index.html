@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>动效样式 · popo 首页示意</title>
+    <style>
+      :root {
+        color-scheme: light;
+        background: #fff;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-width: 320px;
+        min-height: 100%;
+        margin: 0;
+        background: #fff;
+      }
+
+      body {
+        overflow-x: auto;
+      }
+
+      .static-home {
+        min-height: 100vh;
+        display: grid;
+        place-items: start center;
+        background: #fff;
+      }
+
+      .static-home__canvas {
+        position: relative;
+        width: min(100vw, 100%);
+        min-width: 1024px;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+      }
+
+      .static-home__image,
+      .static-home__input {
+        display: block;
+        position: absolute;
+        max-width: none;
+      }
+
+      .static-home__image {
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .static-home__input {
+        top: 11.5%;
+        left: 25.2083%;
+        width: 49.5833%;
+        height: auto;
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      @media (max-width: 1023px) {
+        .static-home {
+          justify-content: flex-start;
+        }
+
+        .static-home__canvas {
+          width: 1024px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="static-home" aria-label="popo 首页静态示意">
+      <div class="static-home__canvas">
+        <img
+          class="static-home__image"
+          src="./首次引导.png"
+          alt="popo 首页设计示意图"
+        />
+        <img
+          class="static-home__input"
+          src="./输入框.svg"
+          alt="首页搜索输入框示意"
+        />
+      </div>
+    </main>
+  </body>
+</html>
