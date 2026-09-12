@@ -129,7 +129,7 @@ function finishHomeOnboarding() {
   if (overlay) overlay.hidden = true;
   document.documentElement.classList.remove('home-onboarding-active', 'home-onboarding-revealing');
   homeOnboardingRevealing = false;
-  if (currentRoute() === '/') initAvatarGuide();
+  if (currentRoute() === '/') initAvatarGuide({ immediate: true });
 }
 
 function startHomeOnboardingReveal() {
@@ -167,7 +167,7 @@ function initHomeOnboarding() {
   return true;
 }
 
-function initAvatarGuide() {
+function initAvatarGuide({ immediate = false } = {}) {
   const glow = document.querySelector('.topbar-avatar-glow');
   const guide = document.querySelector('[data-avatar-guide]');
   let seen = false;
@@ -178,10 +178,15 @@ function initAvatarGuide() {
     return;
   }
   window.clearTimeout(avatarGuideTimer);
-  avatarGuideTimer = window.setTimeout(() => {
+  const showGuide = () => {
     try { window.localStorage.setItem(AVATAR_GUIDE_SEEN_KEY, '1'); } catch {}
     if (guide) guide.hidden = false;
-  }, 2000);
+  };
+  if (immediate) {
+    showGuide();
+    return;
+  }
+  avatarGuideTimer = window.setTimeout(showGuide, 2000);
 }
 
 function replayHomeFirstVisitExperience() {
