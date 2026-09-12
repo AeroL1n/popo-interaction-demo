@@ -479,16 +479,16 @@ button:not(:disabled) {
   z-index: 81;
 }
 
-/* 头像与浮层间的透明 Hover 桥。必须挂在头像容器上，避免被浮层的
-   overflow:hidden 裁掉；横向加宽，覆盖从头像移向浮层的自然斜向轨迹。 */
-.avatar-mailbox-root::after {
+/* 独立的透明 Hover 桥只负责连接头像与消息浮层。引导气泡虽然也在
+   头像容器内，但不会再扩大消息浮层的触发热区。 */
+.avatar-mailbox-hover-bridge {
   position: absolute;
   top: 100%;
   right: -24px;
   z-index: 81;
+  display: block;
   width: 104px;
   height: 5px;
-  content: "";
   background: transparent;
 }
 
@@ -518,20 +518,20 @@ button:not(:disabled) {
   background: transparent;
 }
 
-.avatar-mailbox-root:hover .avatar-mailbox-popover,
-.avatar-mailbox-root:focus-within .avatar-mailbox-popover {
+.topbar-avatar-link:hover ~ .avatar-mailbox-popover,
+.topbar-avatar-link:focus-visible ~ .avatar-mailbox-popover,
+.avatar-mailbox-hover-bridge:hover ~ .avatar-mailbox-popover,
+.avatar-mailbox-popover:hover,
+.avatar-mailbox-popover:focus-within {
   visibility: visible;
   opacity: 1;
   transform: none;
   pointer-events: auto;
 }
 
-.avatar-mailbox-root:hover .topbar-avatar-glow,
-.avatar-mailbox-root:hover .avatar-status-ring,
-.avatar-mailbox-root:hover .avatar-status-badge,
-.avatar-mailbox-root:focus-within .topbar-avatar-glow,
-.avatar-mailbox-root:focus-within .avatar-status-ring,
-.avatar-mailbox-root:focus-within .avatar-status-badge {
+.avatar-mailbox-root:has(> .topbar-avatar-link:hover, > .topbar-avatar-link:focus-visible, > .avatar-mailbox-hover-bridge:hover, > .avatar-mailbox-popover:hover, > .avatar-mailbox-popover:focus-within) .topbar-avatar-glow,
+.avatar-mailbox-root:has(> .topbar-avatar-link:hover, > .topbar-avatar-link:focus-visible, > .avatar-mailbox-hover-bridge:hover, > .avatar-mailbox-popover:hover, > .avatar-mailbox-popover:focus-within) .avatar-status-ring,
+.avatar-mailbox-root:has(> .topbar-avatar-link:hover, > .topbar-avatar-link:focus-visible, > .avatar-mailbox-hover-bridge:hover, > .avatar-mailbox-popover:hover, > .avatar-mailbox-popover:focus-within) .avatar-status-badge {
   opacity: 0;
 }
 
