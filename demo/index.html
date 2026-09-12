@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#ffffff" />
     <title>popo</title>
     <link rel="icon" type="image/svg+xml" sizes="any" href="./assets/home/popo-avatar.svg?v=1" />
-    <link rel="stylesheet" href="./styles.css?v=20260912cw" />
+    <link rel="stylesheet" href="./styles.css?v=20260912cy" />
     <link rel="stylesheet" href="./toolbar-final.css?v=20260809aa" />
     <script>
       document.addEventListener('pointerover', function (event) {
@@ -209,8 +209,27 @@
       </section>
     </div>
 
+    <div class="plaza-backdrop" id="plazaModal" hidden>
+      <section class="plaza-dialog" role="dialog" aria-modal="true" aria-label="泡泡广场">
+        <button class="plaza-close" type="button" data-close-plaza aria-label="关闭泡泡广场">
+          <img src="./assets/plaza/close.svg" alt="" />
+        </button>
+        <div class="plaza-stage">
+          <img class="plaza-platform" src="./assets/plaza/platform@4x.png" alt="" aria-hidden="true" />
+          <img class="plaza-feature plaza-feature-wish" src="./assets/plaza/wishing-pool.svg" alt="许愿池：许下想法，共建未来" />
+          <img class="plaza-feature plaza-feature-new" src="./assets/plaza/new-arrivals.svg" alt="冒泡上新：发现最新功能，抢先体验" />
+          <img class="plaza-feature plaza-feature-qa" src="./assets/plaza/q-and-a.svg" alt="有问必答：提问与解答，互帮互助" />
+          <img class="plaza-feature plaza-feature-group" src="./assets/plaza/group-guide.svg" alt="进群冒泡，群号 13001998" />
+          <button class="plaza-hotspot plaza-hotspot-wish" type="button" data-plaza-action="wish" aria-label="进入许愿池"></button>
+          <button class="plaza-hotspot plaza-hotspot-new" type="button" data-plaza-action="new" aria-label="进入冒泡上新"></button>
+          <button class="plaza-hotspot plaza-hotspot-qa" type="button" data-plaza-action="qa" aria-label="进入有问必答"></button>
+          <button class="plaza-hotspot plaza-hotspot-group" type="button" data-plaza-action="group" aria-label="进群冒泡，群号 13001998"></button>
+        </div>
+      </section>
+    </div>
+
     <div class="home-action-tooltip" id="homeActionTooltip" role="tooltip" data-side="top" aria-hidden="true"></div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260912cx"></script>
+    <script src="./app.js?v=20260912cy"></script>
   </body>
 </html>
